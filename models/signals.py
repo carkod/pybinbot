@@ -52,5 +52,3 @@ class SignalsConsumer(BaseModel):
             return v
         else:
             raise ValueError("must be a float or 0")
-
-# Add more shared models here by copying from the relevant source files
