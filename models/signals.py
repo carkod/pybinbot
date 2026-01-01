@@ -11,22 +11,28 @@ from datetime import datetime
 
 # ...existing code...
 
+
 # Example shared model (copy actual model code from source files)
 class HABollinguerSpread(BaseModel):
     """
     Pydantic model for the Bollinguer spread.
     (optional)
     """
+
     bb_high: float
     bb_mid: float
     bb_low: float
+
 
 class SignalsConsumer(BaseModel):
     """
     Pydantic model for the signals consumer.
     """
+
     type: str = Field(default="signal")
-    date: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    date: str = Field(
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    )
     spread: Optional[float] = Field(default=0)
     current_price: Optional[float] = Field(default=0)
     msg: str
