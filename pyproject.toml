@@ -1,5 +1,9 @@
 [tool.setuptools]
 packages = ["shared", "models"]
+py-modules = ["pybinbot"]
+
+[tool.setuptools.package-data]
+pybinbot = ["py.typed"]
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -8,7 +12,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pybinbot"
-version = "0.0.4"
+version = "0.0.7"
 description = "Utility functions for the binbot project."
 authors = [
     { name="Carlos Wu", email="carkodw@gmail.com" }

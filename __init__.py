@@ -1,10 +1,11 @@
-"""pybinbot package.
+"""Top-level helpers for the ``pybinbot`` distribution.
 
-This package exposes the internal modules ``shared`` and ``models``.
-Third-party libraries are intentionally **not** imported at package import
-time to avoid side effects and slow or hanging imports during testing.
+This module re-exports the internal ``shared`` and ``models`` packages so
+consumers can simply ``import pybinbot`` and access ``pybinbot.shared``
+and ``pybinbot.models``.
 """
 
-from . import shared, models  # type: ignore[import]
+import shared  # type: ignore[import]
+import models  # type: ignore[import]
 
 __all__ = ["shared", "models"]
