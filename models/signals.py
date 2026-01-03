@@ -1,15 +1,6 @@
-"""
-Shared Pydantic models for Binquant and Binbot.
-This file is auto-generated and should be reviewed for deduplication and refactoring.
-"""
-
-# Example imports (update as needed)
-from pydantic import BaseModel, Field, EmailStr, field_validator, ConfigDict
-from typing import Optional, List, Sequence, Union
-from uuid import UUID, uuid4
+from pydantic import BaseModel, Field, field_validator, ConfigDict
+from typing import Optional
 from datetime import datetime
-
-# ...existing code...
 
 
 # Example shared model (copy actual model code from source files)

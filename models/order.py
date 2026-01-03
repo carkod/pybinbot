@@ -1,21 +1,9 @@
-from typing import List, Optional
-from uuid import uuid4, UUID
 from pydantic import BaseModel, Field, field_validator
-from databases.utils import Amount, timestamp
-from tools.enum_definitions import (
-    QuoteAssets,
-    BinanceKlineIntervals,
-    CloseConditions,
-    Status,
-    Strategy,
+from shared.types import Amount
+from shared.enums import (
     DealType,
     OrderStatus,
 )
-from tools.handle_error import IResponseBase
-from tools.maths import ts_to_humandate
-from databases.tables.bot_table import BotTable, PaperTradingTable
-from databases.tables.deal_table import DealTable
-from databases.tables.order_table import ExchangeOrderTable
 
 
 class OrderModel(BaseModel):
@@ -55,20 +43,6 @@ class OrderModel(BaseModel):
             ],
         },
     }
-
-    @classmethod
-    def dump_from_table(cls, bot):
-        if isinstance(bot, BotTable) or isinstance(bot, PaperTradingTable):
-            model = BotModel.model_construct(**bot.model_dump())
-            deal_model = DealModel.model_construct(**bot.deal.model_dump())
-            order_models = [
-                OrderModel.model_construct(**order.model_dump()) for order in bot.orders
-            ]
-            model.deal = deal_model
-            model.orders = order_models
-            return model
-        else:
-            return bot
 
 
 class DealModel(BaseModel):
