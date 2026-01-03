@@ -12,7 +12,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pybinbot"
-version = "0.0.11"
+version = "0.0.15"
 description = "Utility functions for the binbot project."
 authors = [
     { name="Carlos Wu", email="carkodw@gmail.com" }
@@ -21,6 +21,9 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "pydantic[email]>=2.0.0",
+    "numpy==2.2.0",
+    "pandas>=2.2.3",
+    "pymongo==4.6.3",
 ]
 
 [project.optional-dependencies]

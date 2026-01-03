@@ -45,8 +45,10 @@ from shared.enums import (
     UserRoles,
     QuoteAssets,
     ExchangeId,
+    MarketDominance,
 )
 from shared.types import Amount
+from shared.logging_config import configure_logging
 from models.bot_base import BotBase
 from models.order import OrderBase
 from models.deal import DealBase
@@ -57,8 +59,9 @@ __all__ = [
     "BotBase",
     "OrderBase",
     "DealBase",
-    # custom types
+    # misc
     "Amount",
+    "configure_logging",
     # maths helpers
     "supress_trailling",
     "round_numbers",
@@ -95,4 +98,5 @@ __all__ = [
     "ExchangeId",
     "HABollinguerSpread",
     "SignalsConsumer",
+    "MarketDominance",
 ]
