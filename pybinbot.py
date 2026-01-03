@@ -9,8 +9,7 @@ The implementation deliberately avoids importing heavy third-party
 libraries at module import time.
 """
 
-from shared import maths, timestamps, enums  # type: ignore[import]
-from shared.maths import (  # type: ignore[import]
+from shared.maths import (
     supress_trailling,
     round_numbers,
     round_numbers_ceiling,
@@ -20,7 +19,7 @@ from shared.maths import (  # type: ignore[import]
     format_ts,
     zero_remainder,
 )
-from shared.timestamps import (  # type: ignore[import]
+from shared.timestamps import (
     timestamp,
     round_timestamp,
     ts_to_day,
@@ -28,7 +27,7 @@ from shared.timestamps import (  # type: ignore[import]
     sec_to_ms,
     ts_to_humandate,
 )
-from shared.enums import (  # type: ignore[import]
+from shared.enums import (
     CloseConditions,
     KafkaTopics,
     DealType,
@@ -49,13 +48,17 @@ from shared.enums import (  # type: ignore[import]
 )
 from shared.types import Amount
 from models.bot_base import BotBase
-from models.order import OrderModel, DealModel
+from models.order import OrderBase
+from models.deal import DealBase
 from models.signals import HABollinguerSpread, SignalsConsumer
 
 __all__ = [
-    "maths",
-    "timestamps",
-    "enums",
+    # models
+    "BotBase",
+    "OrderBase",
+    "DealBase",
+    # custom types
+    "Amount",
     # maths helpers
     "supress_trailling",
     "round_numbers",
@@ -72,7 +75,7 @@ __all__ = [
     "ms_to_sec",
     "sec_to_ms",
     "ts_to_humandate",
-    # enums and models
+    # enums
     "CloseConditions",
     "KafkaTopics",
     "DealType",
@@ -90,10 +93,6 @@ __all__ = [
     "UserRoles",
     "QuoteAssets",
     "ExchangeId",
-    "Amount",
-    "BotBase",
-    "OrderModel",
-    "DealModel",
     "HABollinguerSpread",
     "SignalsConsumer",
 ]
