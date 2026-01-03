@@ -12,16 +12,22 @@ def timestamp() -> int:
 
 def round_timestamp(ts: int | float) -> int:
     """
-    Round millisecond timestamps to always 13 digits
-    this is the universal format that JS and Python accept
+    Round (or trim) millisecond timestamps to at most 13 digits.
+
+    For realistic millisecond timestamps (13 digits) this is a no-op.
+    For larger integers, extra lower-order digits are discarded so that
+    the result has exactly 13 digits.
     """
-    digits = int(math.log10(ts)) + 1
+    ts_int = int(ts)
+    digits = int(math.log10(ts_int)) + 1 if ts_int > 0 else 1
+
     if digits > 13:
+        # Drop extra lower-order digits to get back to 13 digits.
         decimals = digits - 13
-        multiplier = 10**decimals
-        return int(round_numbers(ts * multiplier, decimals))
+        factor = 10**decimals
+        return ts_int // factor
     else:
-        return int(ts)
+        return ts_int
 
 
 def ts_to_day(ts: float | int) -> str:
@@ -57,10 +63,12 @@ def sec_to_ms(sec: int) -> int:
 
 
 def ts_to_humandate(ts: int) -> str:
+    """Convert timestamp to human-readable date.
+
+    Accepts either seconds (10 digits) or milliseconds (13 digits) and
+    normalises to seconds for ``datetime.fromtimestamp``.
     """
-    Convert timestamp to human-readable date
-    """
-    if len(str(abs(1747852851106))) > 10:
+    if len(str(abs(ts))) > 10:
         # if timestamp is in milliseconds
         ts = ts // 1000
     return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")

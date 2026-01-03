@@ -2,6 +2,7 @@ import math
 import re
 from decimal import Decimal
 from datetime import datetime
+from typing import cast
 
 
 def ensure_float(value: str | int | float) -> float:
@@ -13,18 +14,16 @@ def ensure_float(value: str | int | float) -> float:
 
 def supress_trailling(value: str | float | int) -> float:
     """
-    Supress trilling 0s
-    this function will not round the number
-    e.g. 3.140, 3.140000004
+    Supress trailing 0s without changing the numeric value.
 
-    also supress scientific notation
-    e.g. 2.05-5
+    Also attempts to normalise away scientific notation for small
+    numbers while preserving the original value.
     """
-    value = float(value)
-    # supress scientific notation
-    number = float(f"{value:f}")
-    number = float("{0:g}".format(number))
-    return number
+    # Use Decimal(str(value)) to avoid binary float rounding issues
+    dec = Decimal(str(value))
+    # Normalise to remove redundant trailing zeros while preserving value
+    dec = dec.normalize()
+    return float(dec)
 
 
 def round_numbers(value: float | int, decimals=6) -> float | int:
@@ -56,16 +55,29 @@ def round_numbers_floor(value, decimals=6):
 
 def supress_notation(num: float, precision: int = 0) -> str:
     """
-    Supress scientific notation
-    e.g. 8e-5 = "0.00008"
+    Supress scientific notation and return a fixed-point string.
+
+    Examples
+    -------
+    8e-5  -> "0.00008" (precision=5)
+    123.456, precision=2 -> "123.46"
     """
-    dec_num = float(num)
-    num = round_numbers(dec_num, precision)
+    dec = Decimal(str(num))
+
     if precision >= 0:
+        # Quantize to the requested number of decimal places using
+        # Decimal's standard rounding (half even by default).
+        quant = Decimal(1).scaleb(-precision)  # 10**-precision
+        dec = dec.quantize(quant)
         decimal_points = precision
     else:
-        decimal_points = int(Decimal(str(num)).as_tuple().exponent * -1)
-    return f"{num:.{decimal_points}f}"
+        # Let Decimal decide the scale, then format with all significant
+        # decimal places.
+        dec = dec.normalize()
+        exp = cast(int, dec.as_tuple().exponent)
+        decimal_points = -exp
+
+    return f"{dec:.{decimal_points}f}"
 
 
 def interval_to_millisecs(interval: str) -> int:

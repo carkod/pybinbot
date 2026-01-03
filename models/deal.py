@@ -1,51 +1,13 @@
 from pydantic import BaseModel, Field, field_validator
 from shared.types import Amount
-from shared.enums import (
-    DealType,
-    OrderStatus,
-)
 
 
-class OrderBase(BaseModel):
-    order_type: str = Field(
-        description="Because every exchange has different naming, we should keep it as a str rather than OrderType enum"
-    )
-    time_in_force: str
-    timestamp: int = Field(default=0)
-    order_id: int | str = Field(
-        description="Because every exchange has id type, we should keep it as looose as possible. Int is for backwards compatibility"
-    )
-    order_side: str = Field(
-        description="Because every exchange has different naming, we should keep it as a str rather than OrderType enum"
-    )
-    pair: str
-    qty: float
-    status: OrderStatus
-    price: float
-    deal_type: DealType
-    model_config = {
-        "from_attributes": True,
-        "use_enum_values": True,
-        "json_schema_extra": {
-            "description": "Most fields are optional. Deal field is generated internally, orders are filled up by Exchange",
-            "examples": [
-                {
-                    "order_type": "LIMIT",
-                    "time_in_force": "GTC",
-                    "timestamp": 0,
-                    "order_id": 0,
-                    "order_side": "BUY",
-                    "pair": "",
-                    "qty": 0,
-                    "status": "",
-                    "price": 0,
-                }
-            ],
-        },
-    }
+class DealBase(BaseModel):
+    """
+    Data model that is used for operations,
+    so it should all be numbers (int or float)
+    """
 
-
-class DealModel(BaseModel):
     base_order_size: Amount = Field(default=0, gt=-1)
     current_price: Amount = Field(default=0)
     take_profit_price: Amount = Field(default=0)
@@ -55,6 +17,8 @@ class DealModel(BaseModel):
     )
     trailling_profit_price: Amount = Field(default=0)
     stop_loss_price: Amount = Field(default=0)
+
+    # fields for margin trading
     total_interests: float = Field(default=0, gt=-1)
     total_commissions: float = Field(default=0, gt=-1)
     margin_loan_id: int = Field(
@@ -65,6 +29,8 @@ class DealModel(BaseModel):
     margin_repay_id: int = Field(
         default=0, ge=0, description="= 0, it has not been repaid"
     )
+
+    # Refactored deal prices that combine both margin and spot
     opening_price: Amount = Field(
         default=0,
         description="replaces previous buy_price or short_sell_price/margin_short_sell_price",

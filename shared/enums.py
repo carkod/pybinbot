@@ -264,3 +264,9 @@ class QuoteAssets(str, Enum):
 class ExchangeId(str, Enum):
     KUCOIN = "kucoin"
     BINANCE = "binance"
+
+
+class MarketDominance(str, Enum):
+    NEUTRAL = "neutral"
+    GAINERS = "gainers"
+    LOSERS = "losers"

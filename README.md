@@ -5,7 +5,7 @@ Utility functions for the binbot project.
 ## Installation
 
 ```bash
-pip install .
+uv sync
 ```
 
 ## Usage

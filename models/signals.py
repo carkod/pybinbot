@@ -1,15 +1,7 @@
-"""
-Shared Pydantic models for Binquant and Binbot.
-This file is auto-generated and should be reviewed for deduplication and refactoring.
-"""
-
-# Example imports (update as needed)
-from pydantic import BaseModel, Field, EmailStr, field_validator, ConfigDict
-from typing import Optional, List, Sequence, Union
-from uuid import UUID, uuid4
+from pydantic import BaseModel, Field, field_validator, ConfigDict
+from typing import Optional
 from datetime import datetime
 
-# ...existing code...
 
 # Example shared model (copy actual model code from source files)
 class HABollinguerSpread(BaseModel):
@@ -17,16 +9,21 @@ class HABollinguerSpread(BaseModel):
     Pydantic model for the Bollinguer spread.
     (optional)
     """
+
     bb_high: float
     bb_mid: float
     bb_low: float
+
 
 class SignalsConsumer(BaseModel):
     """
     Pydantic model for the signals consumer.
     """
+
     type: str = Field(default="signal")
-    date: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    date: str = Field(
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    )
     spread: Optional[float] = Field(default=0)
     current_price: Optional[float] = Field(default=0)
     msg: str

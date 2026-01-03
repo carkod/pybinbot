@@ -1,0 +1,51 @@
+name: PR checks
+
+on:
+  pull_request:
+    paths:
+      - 'pybinbot/**'
+      - 'pybinbot/Makefile'
+      - 'pybinbot/pyproject.toml'
+      - 'pybinbot/**/*.py'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pybinbot
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -U pip
+          pip install ruff mypy pytest
+      - name: Run lint
+        run: make lint
+
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pybinbot
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -U pip
+          pip install -r requirements.txt || true
+          pip install ruff mypy pytest
+      - name: Run tests
+        run: make test
