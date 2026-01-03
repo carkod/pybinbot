@@ -9,9 +9,6 @@ The implementation deliberately avoids importing heavy third-party
 libraries at module import time.
 """
 
-import shared  # type: ignore[import]
-import models  # type: ignore[import]
-
 from shared import maths, timestamps, enums  # type: ignore[import]
 from shared.maths import (  # type: ignore[import]
 	supress_trailling,
@@ -50,10 +47,9 @@ from shared.enums import (  # type: ignore[import]
 	QuoteAssets,
 	ExchangeId,
 )
+from shared.types import Amount
 
 __all__ = [
-	"shared",
-	"models",
 	"maths",
 	"timestamps",
 	"enums",
@@ -91,4 +87,5 @@ __all__ = [
 	"UserRoles",
 	"QuoteAssets",
 	"ExchangeId",
+    "Amount",
 ]
