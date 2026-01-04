@@ -1,15 +1,7 @@
 name: PyPI Publish
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   push:
-    branches:
-      - main
-    paths:
-      - 'pyproject.toml'
-    tags:
-      - 'v*'
 
 jobs:
   build-and-publish:

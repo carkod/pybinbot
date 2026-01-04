@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 from shared.maths import round_numbers_ceiling
 from datetime import datetime
 
+format = "%Y-%m-%d %H:%M:%S"
 
 def timestamp() -> int:
     ts = time() * 1000
@@ -43,7 +44,7 @@ def ts_to_day(ts: float | int) -> str:
         ts = ts * pow(10, 10 - digits)
 
     dt_obj = datetime.fromtimestamp(ts)
-    b_str_date = datetime.strftime(dt_obj, "%Y-%m-%d")
+    b_str_date = datetime.strftime(dt_obj, format)
     return b_str_date
 
 
@@ -73,7 +74,7 @@ def ts_to_humandate(ts: int) -> str:
     if len(str(abs(ts))) > 10:
         # if timestamp is in milliseconds
         ts = ts // 1000
-    return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+    return datetime.fromtimestamp(ts).strftime(format)
 
 
 def timestamp_to_datetime(timestamp: str | int) -> str:
@@ -88,7 +89,6 @@ def timestamp_to_datetime(timestamp: str | int) -> str:
         The timestamp in milliseconds. Always in London timezone
         to avoid inconsistencies across environments (Github, prod, local)
     """
-    format = "%Y-%m-%d %H:%M:%S"
     timestamp = int(round_numbers_ceiling(int(timestamp) / 1000, 0))
     dt = datetime.fromtimestamp(
         timestamp, tz=ZoneInfo(os.getenv("TZ", "Europe/London"))
