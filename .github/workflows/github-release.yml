@@ -1,22 +1,16 @@
-name: PyPI Publish
+name: GitHub Release
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   push:
-    branches:
-      - main
-    paths:
-      - 'pyproject.toml'
     tags:
       - 'v*'
 
 jobs:
-  build-and-publish:
+  github-release:
+    name: GitHub Release
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -26,11 +20,14 @@ jobs:
       - name: Install build dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install build twine
+          pip install build
       - name: Build package
         run: |
           python -m build
-      - name: Publish to PyPI with OIDC
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          repository-url: https://upload.pypi.org/legacy/
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+          generate_release_notes: true
