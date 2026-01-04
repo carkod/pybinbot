@@ -1,24 +1,11 @@
-# Re-export shared dependencies for unified imports
-import numpy
-import pandas
-import passlib
-import pydantic
-import pydantic_settings
-import pymongo
-import python_dotenv
-import python_jose
-import requests
-import requests_cache
-import requests_html
-import scipy
-import websocket
-import aiokafka
-import apscheduler
-import confluent_kafka
-import kafka
-import kucoin_universal_sdk
+"""Top-level helpers for the ``pybinbot`` distribution.
 
-# Expose them for direct import
-__all__ = [
-    "numpy", "pandas", "passlib", "pydantic", "pydantic_settings", "pymongo", "python_dotenv", "python_jose", "requests", "requests_cache", "requests_html", "scipy", "websocket", "aiokafka", "apscheduler", "confluent_kafka", "kafka", "kucoin_universal_sdk"
-]
+This module re-exports the internal ``shared`` and ``models`` packages so
+consumers can simply ``import pybinbot`` and access ``pybinbot.shared``
+and ``pybinbot.models``.
+"""
+
+import shared  # type: ignore[import]
+import models  # type: ignore[import]
+
+__all__ = ["shared", "models"]
