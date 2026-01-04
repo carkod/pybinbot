@@ -1,10 +1,8 @@
 import math
 import re
-import os
 from decimal import Decimal
 from datetime import datetime
 from typing import cast
-from zoneinfo import ZoneInfo
 
 
 def ensure_float(value: str | int | float) -> float:
@@ -123,23 +121,3 @@ def zero_remainder(x):
             return number
         else:
             number += x
-
-
-def timestamp_to_datetime(timestamp: str | int) -> str:
-    """
-    Convert a timestamp in milliseconds to seconds
-    to match expectation of datetime
-    Then convert to a human readable format.
-
-    Parameters
-    ----------
-    timestamp : str | int
-        The timestamp in milliseconds. Always in London timezone
-        to avoid inconsistencies across environments (Github, prod, local)
-    """
-    format = "%Y-%m-%d %H:%M:%S"
-    timestamp = int(round_numbers_ceiling(int(timestamp) / 1000, 0))
-    dt = datetime.fromtimestamp(
-        timestamp, tz=ZoneInfo(os.getenv("TZ", "Europe/London"))
-    )
-    return dt.strftime(format)

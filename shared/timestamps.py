@@ -1,6 +1,8 @@
+import os
 from time import time
 import math
-from shared.maths import round_numbers
+from zoneinfo import ZoneInfo
+from shared.maths import round_numbers_ceiling
 from datetime import datetime
 
 
@@ -72,3 +74,24 @@ def ts_to_humandate(ts: int) -> str:
         # if timestamp is in milliseconds
         ts = ts // 1000
     return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def timestamp_to_datetime(timestamp: str | int) -> str:
+    """
+    Convert a timestamp in milliseconds to seconds
+    to match expectation of datetime
+    Then convert to a human readable format.
+
+    Parameters
+    ----------
+    timestamp : str | int
+        The timestamp in milliseconds. Always in London timezone
+        to avoid inconsistencies across environments (Github, prod, local)
+    """
+    format = "%Y-%m-%d %H:%M:%S"
+    timestamp = int(round_numbers_ceiling(int(timestamp) / 1000, 0))
+    dt = datetime.fromtimestamp(
+        timestamp, tz=ZoneInfo(os.getenv("TZ", "Europe/London"))
+    )
+    return dt.strftime(format)
+    

@@ -15,6 +15,7 @@ from shared.timestamps import (
     ms_to_sec,
     sec_to_ms,
     ts_to_humandate,
+    timestamp_to_datetime,
 )
 from shared.enums import (
     CloseConditions,
@@ -67,6 +68,7 @@ __all__ = [
     "ms_to_sec",
     "sec_to_ms",
     "ts_to_humandate",
+    "timestamp_to_datetime",
     # enums
     "CloseConditions",
     "KafkaTopics",
