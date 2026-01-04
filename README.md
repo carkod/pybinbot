@@ -1,22 +1,40 @@
-# binbot-utils
+# PyBinbot
 
-Utility functions for the binbot project.
+Utility functions for the binbot project. Most of the code here is not runnable, there's no server or individual scripts, you simply move code to here when it's used in both binbot and binquant.
+
+``pybinbot`` is the public API module for the distribution.
+
+This module re-exports the internal ``shared`` and ``models`` packages and the most commonly used helpers and enums so consumers can simply::
+
+        from pybinbot import round_numbers, ExchangeId
+
+The implementation deliberately avoids importing heavy third-party libraries at module import time.
+
 
 ## Installation
 
 ```bash
-uv sync
+uv sync --extra dev
 ```
 
-## Usage
+`--extra dev` also installs development tools like ruff and mypy
 
-Import and use the utilities in your Python code.
 
 ## Publishing
 
-To build and upload to PyPI:
+```bash
+make bump-patch
+```
+or 
 
 ```bash
-python -m build
-python -m twine upload dist/*
+make bump-minor
 ```
+
+or
+
+```bash
+make bump-major
+```
+
+For further commands take a look at the `Makefile` such as testing `make test`

@@ -1,14 +1,3 @@
-"""Public API module for the ``pybinbot`` distribution.
-
-This module re-exports the internal ``shared`` and ``models`` packages and
-the most commonly used helpers and enums so consumers can simply::
-
-        from pybinbot import round_numbers, ExchangeId
-
-The implementation deliberately avoids importing heavy third-party
-libraries at module import time.
-"""
-
 from shared.maths import (
     supress_trailling,
     round_numbers,
