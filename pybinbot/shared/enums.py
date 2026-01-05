@@ -2,6 +2,18 @@ from enum import Enum
 from pydantic import BaseModel, field_validator
 
 
+class DealType(str, Enum):
+    base_order = "base_order"
+    take_profit = "take_profit"
+    stop_loss = "stop_loss"
+    short_sell = "short_sell"
+    short_buy = "short_buy"
+    margin_short = "margin_short"
+    panic_close = "panic_close"
+    trailling_profit = "trailling_profit"
+    conversion = "conversion"  # converts one crypto to another
+
+
 class CloseConditions(str, Enum):
     dynamic_trailling = "dynamic_trailling"
     # No trailling, standard stop loss
@@ -16,16 +28,6 @@ class KafkaTopics(str, Enum):
     signals = "signals"
     restart_streaming = "restart-streaming"
     restart_autotrade = "restart-autotrade"
-
-
-class DealType(str, Enum):
-    base_order = "base_order"
-    take_profit = "take_profit"
-    stop_loss = "stop_loss"
-    short_sell = "short_sell"
-    short_buy = "short_buy"
-    margin_short = "margin_short"
-    panic_close = "panic_close"
 
 
 class BinanceOrderModel(BaseModel):
@@ -110,18 +112,6 @@ class TrendEnum(str, Enum):
     up_trend = "uptrend"
     down_trend = "downtrend"
     neutral = None
-
-
-class DealType(str, Enum):
-    base_order = "base_order"
-    take_profit = "take_profit"
-    stop_loss = "stop_loss"
-    short_sell = "short_sell"
-    short_buy = "short_buy"
-    margin_short = "margin_short"
-    panic_close = "panic_close"
-    trailling_profit = "trailling_profit"
-    conversion = "conversion"  # converts one crypto to another
 
 
 class BinanceKlineIntervals(str, Enum):
