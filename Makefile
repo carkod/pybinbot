@@ -8,8 +8,8 @@ format:
 	@uv run ruff format .
 
 lint:
-	@uv run ruff check .
-	@uv run mypy .
+	@uv run ruff check pybinbot
+	@uv run mypy pybinbot tests --explicit-package-bases
 
 test:
 	@uv run python -m pytest tests/
