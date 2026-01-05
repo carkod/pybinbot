@@ -84,23 +84,20 @@ class DealModel(BaseModel):
     opening_price: Amount = Field(
         default=0,
         description=(
-            "replaces previous buy_price or short_sell_price/"
-            "margin_short_sell_price"
+            "replaces previous buy_price or short_sell_price/margin_short_sell_price"
         ),
     )
     opening_qty: Amount = Field(
         default=0,
         description=(
-            "replaces previous buy_total_qty or short_sell_qty/"
-            "margin_short_sell_qty"
+            "replaces previous buy_total_qty or short_sell_qty/margin_short_sell_qty"
         ),
     )
     opening_timestamp: int = Field(default=0)
     closing_price: Amount = Field(
         default=0,
         description=(
-            "replaces previous sell_price or short_sell_price/"
-            "margin_short_sell_price"
+            "replaces previous sell_price or short_sell_price/margin_short_sell_price"
         ),
     )
     closing_qty: Amount = Field(
@@ -111,7 +108,5 @@ class DealModel(BaseModel):
     )
     closing_timestamp: int = Field(
         default=0,
-        description=(
-            "replaces previous buy_timestamp or margin/short_sell timestamps"
-        ),
+        description=("replaces previous buy_timestamp or margin/short_sell timestamps"),
     )

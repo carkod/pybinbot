@@ -1,4 +1,4 @@
-from shared import maths
+from pybinbot.shared import maths
 
 
 def test_ensure_float():

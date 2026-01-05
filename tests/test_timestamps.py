@@ -1,4 +1,4 @@
-from shared import timestamps
+from pybinbot.shared import timestamps
 from datetime import datetime
 
 

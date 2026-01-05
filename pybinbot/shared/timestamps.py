@@ -8,6 +8,7 @@ from .maths import round_numbers_ceiling
 
 format = "%Y-%m-%d %H:%M:%S"
 
+
 def timestamp() -> int:
     ts = time() * 1000
     rounded_ts = round_timestamp(ts)
@@ -45,8 +46,8 @@ def ts_to_day(ts: float | int) -> str:
         ts = ts * pow(10, 10 - digits)
 
     dt_obj = datetime.fromtimestamp(ts)
-    b_str_date = datetime.strftime(dt_obj, format)
-    return b_str_date
+    # ts_to_day returns a date string without time component
+    return datetime.strftime(dt_obj, "%Y-%m-%d")
 
 
 def ms_to_sec(ms: int) -> int:
