@@ -1,6 +1,9 @@
 from typing import Annotated
+
 from pydantic import BeforeValidator
-from shared.maths import ensure_float
+
+from .maths import ensure_float
+
 
 Amount = Annotated[
     float,

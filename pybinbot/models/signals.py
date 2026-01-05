@@ -1,14 +1,11 @@
-from pydantic import BaseModel, Field, field_validator, ConfigDict
-from typing import Optional
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-# Example shared model (copy actual model code from source files)
 class HABollinguerSpread(BaseModel):
-    """
-    Pydantic model for the Bollinguer spread.
-    (optional)
-    """
+    """Pydantic model for the Bollinguer spread."""
 
     bb_high: float
     bb_mid: float
@@ -16,9 +13,7 @@ class HABollinguerSpread(BaseModel):
 
 
 class SignalsConsumer(BaseModel):
-    """
-    Pydantic model for the signals consumer.
-    """
+    """Pydantic model for the signals consumer."""
 
     type: str = Field(default="signal")
     date: str = Field(

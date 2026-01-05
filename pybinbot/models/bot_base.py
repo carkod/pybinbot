@@ -1,14 +1,14 @@
 from pydantic import BaseModel, Field, field_validator
-from shared.types import Amount
-from shared.timestamps import timestamp
-from shared.enums import (
-    QuoteAssets,
+
+from pybinbot.shared.enums import (
     BinanceKlineIntervals,
     CloseConditions,
+    QuoteAssets,
     Status,
     Strategy,
 )
-from shared.timestamps import ts_to_humandate
+from pybinbot.shared.timestamps import timestamp, ts_to_humandate
+from pybinbot.shared.types import Amount
 
 
 class BotBase(BaseModel):

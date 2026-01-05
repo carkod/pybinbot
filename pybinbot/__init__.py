@@ -1,60 +1,62 @@
-"""Public API module for the ``pybinbot`` distribution.
+"""Public API for the ``pybinbot`` distribution.
 
-This module re-exports the internal ``shared`` and ``models`` packages and
-the most commonly used helpers and enums so consumers can simply::
-
-        from pybinbot import round_numbers, ExchangeId
-
-The implementation deliberately avoids importing heavy third-party
-libraries at module import time.
+This package exposes a flat, convenient API for common types, enums and
+models, while still allowing access to the structured subpackages via
+``pybinbot.shared`` and ``pybinbot.models``.
 """
 
-from shared.maths import (
-    supress_trailling,
+from pybinbot.shared.maths import (
+    format_ts,
+    interval_to_millisecs,
     round_numbers,
     round_numbers_ceiling,
     round_numbers_floor,
     supress_notation,
-    interval_to_millisecs,
-    format_ts,
+    supress_trailling,
     zero_remainder,
 )
-from shared.timestamps import (
-    timestamp,
-    round_timestamp,
-    ts_to_day,
+from pybinbot.shared.timestamps import (
     ms_to_sec,
+    round_timestamp,
     sec_to_ms,
+    timestamp,
+    timestamp_to_datetime,
+    ts_to_day,
     ts_to_humandate,
 )
-from shared.enums import (
-    CloseConditions,
-    KafkaTopics,
-    DealType,
+from pybinbot.shared.enums import (
+    AutotradeSettingsDocument,
+    BinanceKlineIntervals,
     BinanceOrderModel,
-    Status,
-    Strategy,
-    OrderType,
-    TimeInForce,
+    CloseConditions,
+    DealType,
+    ExchangeId,
+    KafkaTopics,
+    KucoinKlineIntervals,
+    MarketDominance,
     OrderSide,
     OrderStatus,
-    TrendEnum,
-    BinanceKlineIntervals,
-    KucoinKlineIntervals,
-    AutotradeSettingsDocument,
-    UserRoles,
+    OrderType,
     QuoteAssets,
-    ExchangeId,
-    MarketDominance,
+    Status,
+    Strategy,
+    TimeInForce,
+    TrendEnum,
+    UserRoles,
 )
-from shared.types import Amount
-from shared.logging_config import configure_logging
-from models.bot_base import BotBase
-from models.order import OrderBase
-from models.deal import DealBase
-from models.signals import HABollinguerSpread, SignalsConsumer
+from pybinbot.shared.logging_config import configure_logging
+from pybinbot.shared.types import Amount
+from pybinbot.models.bot_base import BotBase
+from pybinbot.models.deal import DealBase
+from pybinbot.models.order import OrderBase
+from pybinbot.models.signals import HABollinguerSpread, SignalsConsumer
+
+from . import models, shared
 
 __all__ = [
+    # subpackages
+    "shared",
+    "models",
     # models
     "BotBase",
     "OrderBase",
@@ -78,6 +80,7 @@ __all__ = [
     "ms_to_sec",
     "sec_to_ms",
     "ts_to_humandate",
+    "timestamp_to_datetime",
     # enums
     "CloseConditions",
     "KafkaTopics",
