@@ -22,6 +22,9 @@ uv sync --extra dev
 
 ## Publishing
 
+1. Save your changes and do the usual Git flow (add, commit, don't push the changes yet).
+2. Bump the version, choose one of these:
+
 ```bash
 make bump-patch
 ```
@@ -36,5 +39,13 @@ or
 ```bash
 make bump-major
 ```
+
+3. Git tag the version for Github. This will read the bump version.
+```
+make tag
+```
+
+4. Git push
+
 
 For further commands take a look at the `Makefile` such as testing `make test`
