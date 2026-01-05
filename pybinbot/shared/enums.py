@@ -2,62 +2,6 @@ from enum import Enum
 from pydantic import BaseModel, field_validator
 
 
-class CloseConditions(str, Enum):
-    dynamic_trailling = "dynamic_trailling"
-    # No trailling, standard stop loss
-    timestamp = "timestamp"
-    # binbot-research param (self.market_trend_reversal)
-    market_reversal = "market_reversal"
-
-
-class KafkaTopics(str, Enum):
-    klines_store_topic = "klines-store-topic"
-    technical_indicators = "technical-indicators"
-    signals = "signals"
-    restart_streaming = "restart-streaming"
-    restart_autotrade = "restart-autotrade"
-
-
-class DealType(str, Enum):
-    base_order = "base_order"
-    take_profit = "take_profit"
-    stop_loss = "stop_loss"
-    short_sell = "short_sell"
-    short_buy = "short_buy"
-    margin_short = "margin_short"
-    panic_close = "panic_close"
-
-
-class BinanceOrderModel(BaseModel):
-    """
-    Data model given by Binance,
-    therefore it should be strings
-    """
-
-    order_type: str
-    time_in_force: str
-    timestamp: int
-    order_id: int
-    order_side: str
-    pair: str
-    qty: float
-    status: str
-    price: float
-    deal_type: DealType
-
-    @field_validator("timestamp", "order_id", "price", "qty", "order_id")
-    @classmethod
-    def validate_str_numbers(cls, v):
-        if isinstance(v, float):
-            return v
-        elif isinstance(v, int):
-            return v
-        elif isinstance(v, str):
-            return float(v)
-        else:
-            raise ValueError(f"{v} must be a number")
-
-
 class Status(str, Enum):
     all = "all"
     inactive = "inactive"
@@ -270,3 +214,49 @@ class MarketDominance(str, Enum):
     NEUTRAL = "neutral"
     GAINERS = "gainers"
     LOSERS = "losers"
+
+
+class CloseConditions(str, Enum):
+    dynamic_trailling = "dynamic_trailling"
+    # No trailling, standard stop loss
+    timestamp = "timestamp"
+    # binbot-research param (self.market_trend_reversal)
+    market_reversal = "market_reversal"
+
+
+class KafkaTopics(str, Enum):
+    klines_store_topic = "klines-store-topic"
+    technical_indicators = "technical-indicators"
+    signals = "signals"
+    restart_streaming = "restart-streaming"
+    restart_autotrade = "restart-autotrade"
+
+
+class BinanceOrderModel(BaseModel):
+    """
+    Data model given by Binance,
+    therefore it should be strings
+    """
+
+    order_type: str
+    time_in_force: str
+    timestamp: int
+    order_id: int
+    order_side: str
+    pair: str
+    qty: float
+    status: str
+    price: float
+    deal_type: DealType
+
+    @field_validator("timestamp", "order_id", "price", "qty", "order_id")
+    @classmethod
+    def validate_str_numbers(cls, v):
+        if isinstance(v, float):
+            return v
+        elif isinstance(v, int):
+            return v
+        elif isinstance(v, str):
+            return float(v)
+        else:
+            raise ValueError(f"{v} must be a number")
