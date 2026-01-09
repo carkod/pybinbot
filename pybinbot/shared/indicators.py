@@ -175,6 +175,18 @@ class Indicators:
         return df
 
     @staticmethod
+    def trend_ema(
+        df: DataFrame, column: str = "close", fast_span: int = 9, slow_span: int = 21
+    ) -> DataFrame:
+        """Compute fast and slow EMAs for trend analysis.
+
+        Adds 'ema_fast' and 'ema_slow' columns and returns the DataFrame.
+        """
+        df = Indicators.ema(df, column=column, span=fast_span, out_col="ema_fast")
+        df = Indicators.ema(df, column=column, span=slow_span, out_col="ema_slow")
+        return df
+
+    @staticmethod
     def rsi(df: DataFrame, window: int = 14) -> DataFrame:
         """
         Relative Strength Index (RSI) indicator
