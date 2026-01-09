@@ -6,6 +6,7 @@ from pybinbot.shared.heikin_ashi import HeikinAshi
 Dataframe operations shared across projects
 """
 
+
 class Indicators:
     """
     Technical indicators for financial data analysis
