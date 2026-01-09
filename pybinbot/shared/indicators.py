@@ -1,4 +1,5 @@
-from pandas import DataFrame, Series, concat, to_datetime, to_numeric
+from typing import cast
+from pandas import DataFrame, Series, Timedelta, concat, to_datetime, to_numeric
 from pybinbot.shared.enums import ExchangeId
 from pybinbot.shared.heikin_ashi import HeikinAshi
 
@@ -131,6 +132,7 @@ class Indicators:
         df.reset_index(drop=True, inplace=True)
         return df
 
+    @staticmethod
     def moving_averages(df: DataFrame, period=7) -> DataFrame:
         """
         Calculate moving averages for 7, 25, 100 days
@@ -139,6 +141,7 @@ class Indicators:
         df[f"ma_{period}"] = df["close"].rolling(window=period).mean()
         return df
 
+    @staticmethod
     def macd(df: DataFrame) -> DataFrame:
         """
         Moving Average Convergence Divergence (MACD) indicator
@@ -159,6 +162,7 @@ class Indicators:
 
         return df
 
+    @staticmethod
     def ema(
         df: DataFrame, column: str = "close", span: int = 9, out_col: str | None = None
     ) -> DataFrame:
@@ -170,6 +174,7 @@ class Indicators:
         df[target_col] = df[column].ewm(span=span, adjust=False).mean()
         return df
 
+    @staticmethod
     def rsi(df: DataFrame, window: int = 14) -> DataFrame:
         """
         Relative Strength Index (RSI) indicator
@@ -193,13 +198,16 @@ class Indicators:
 
         return df
 
+    @staticmethod
     def standard_rsi(df: DataFrame, window: int = 14) -> DataFrame:
         delta = df["close"].diff()
         gain = delta.where(delta > 0, 0).rolling(window=window, min_periods=1).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=window, min_periods=1).mean()
         rs = gain / (loss + 1e-10)
-        return 100 - (100 / (1 + rs))
+        df["rsi"] = 100 - (100 / (1 + rs))
+        return df
 
+    @staticmethod
     def ma_spreads(df: DataFrame) -> DataFrame:
         """
         Calculates spread based on bollinger bands,
@@ -218,6 +226,7 @@ class Indicators:
 
         return df
 
+    @staticmethod
     def bollinguer_spreads(df: DataFrame, window=20, num_std=2) -> DataFrame:
         """
         Calculates Bollinguer bands
@@ -237,6 +246,7 @@ class Indicators:
 
         return df
 
+    @staticmethod
     def log_volatility(df: DataFrame, window_size=7) -> DataFrame:
         """
         Volatility (standard deviation of returns) using logarithm, this normalizes data
@@ -252,6 +262,7 @@ class Indicators:
 
         return df
 
+    @staticmethod
     def set_twap(df: DataFrame, periods: int = 30) -> DataFrame:
         """
         Time-weighted average price
@@ -262,9 +273,10 @@ class Indicators:
         """
         pre_df = df.copy()
         pre_df["Event Time"] = to_datetime(pre_df["close_time"])
-        pre_df["Time Diff"] = (
-            pre_df["Event Time"].diff(periods=periods).dt.total_seconds() / 3600
+        time_diff_td = cast(
+            "Series[Timedelta]", pre_df["Event Time"].diff(periods=periods)
         )
+        pre_df["Time Diff"] = time_diff_td.dt.total_seconds() / 3600
         pre_df["Weighted Value"] = pre_df["close"] * pre_df["Time Diff"]
         pre_df["Weighted Average"] = (
             pre_df["Weighted Value"].rolling(periods).sum() / pre_df["Time Diff"].sum()
@@ -274,6 +286,7 @@ class Indicators:
 
         return df
 
+    @staticmethod
     def atr(
         df: DataFrame,
         window: int = 14,
@@ -308,6 +321,7 @@ class Indicators:
 
         return df
 
+    @staticmethod
     def set_supertrend(
         df: DataFrame,
         atr_col: str = "ATR",
