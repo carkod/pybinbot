@@ -11,7 +11,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pybinbot"
-version = "0.2.6"
+version = "0.2.9"
 description = "Utility functions for the binbot project."
 authors = [
     { name="Carlos Wu", email="carkodw@gmail.com" }
@@ -23,6 +23,7 @@ dependencies = [
     "numpy==2.2.0",
     "pandas>=2.2.3",
     "pymongo==4.6.3",
+    "pandas-stubs>=2.3.3.251219",
 ]
 
 [project.optional-dependencies]

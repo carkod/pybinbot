@@ -44,6 +44,9 @@ from pybinbot.shared.enums import (
     TrendEnum,
     UserRoles,
 )
+from pybinbot.shared.indicators import Indicators
+from pybinbot.shared.ohlc import OHLCDataFrame
+from pybinbot.shared.heikin_ashi import HeikinAshi
 from pybinbot.shared.logging_config import configure_logging
 from pybinbot.shared.types import Amount
 from pybinbot.models.bot_base import BotBase
@@ -81,6 +84,10 @@ __all__ = [
     "sec_to_ms",
     "ts_to_humandate",
     "timestamp_to_datetime",
+    # dataframes
+    "OHLCDataFrame",
+    "Indicators",
+    "HeikinAshi",
     # enums
     "CloseConditions",
     "KafkaTopics",
