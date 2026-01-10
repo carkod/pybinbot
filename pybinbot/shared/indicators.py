@@ -27,7 +27,6 @@ class Indicators:
         "number_of_trades",
         "taker_buy_base_asset_volume",
         "taker_buy_quote_asset_volume",
-        "unused_field",
     ]
     kucoin_cols = [
         "open_time",
@@ -45,38 +44,11 @@ class Indicators:
         df_1h = DataFrame()
         df_4h = DataFrame()
         if exchange == ExchangeId.BINANCE:
-            df.columns = self.binance_cols
-
-            # Drop unused columns - keep only OHLCV data needed for technical analysis
-            df = df[
-                [
-                    "open_time",
-                    "open",
-                    "high",
-                    "low",
-                    "close",
-                    "volume",
-                    "close_time",
-                    "quote_asset_volume",
-                    "number_of_trades",
-                    "taker_buy_base_asset_volume",
-                    "taker_buy_quote_asset_volume",
-                ]
-            ]
+            df = df[self.binance_cols]
+            columns = self.binance_cols
         else:
-            # in the case of Kucoin, no extra columns
-            columns = [
-                "open_time",
-                "open",
-                "high",
-                "low",
-                "close",
-                "volume",
-                "close_time",
-                "quote_asset_volume",
-            ]
-            df.columns = columns
-            df = df[columns]
+            df = df[self.kucoin_cols]
+            columns = self.kucoin_cols
 
         # Ensure the dataframe has exactly these columns
         if len(df.columns) != len(columns):
