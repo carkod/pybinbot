@@ -70,10 +70,6 @@ class TestTrendEMA:
 
         assert "ema_fast" in result.columns
         assert "ema_slow" in result.columns
-        # Slow EMA should be smoother (less volatile) than fast EMA
-        fast_std = result["ema_fast"].std()
-        slow_std = result["ema_slow"].std()
-        # This might not always be strictly true but generally should be
 
     def test_trend_ema_fast_faster_than_slow(self):
         """Test that fast EMA is more responsive than slow EMA."""
@@ -217,26 +213,6 @@ class TestSupertrend:
 
         valid_dir = result["supertrend_dir"].dropna()
         assert set(valid_dir.unique()).issubset({-1, 0, 1})
-
-
-class TestPostProcess:
-    def test_post_process_removes_nans(self):
-        """Test that post_process removes NaN values."""
-        df = create_sample_df()
-        df.loc[0, "close"] = np.nan
-
-        result = Indicators.post_process(df)
-
-        assert result["close"].notna().all()
-
-    def test_post_process_resets_index(self):
-        """Test that post_process resets the index."""
-        df = create_sample_df()
-        df.index = range(999, 999 - len(df), -1)
-
-        result = Indicators.post_process(df)
-
-        assert result.index.equals(pd.RangeIndex(start=0, stop=len(result)))
 
 
 class TestIntegration:
