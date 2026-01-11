@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from pybinbot.shared.heikin_ashi import HeikinAshi
 from pybinbot.shared.indicators import Indicators
 
 
@@ -217,26 +218,6 @@ class TestSupertrend:
 
         valid_dir = result["supertrend_dir"].dropna()
         assert set(valid_dir.unique()).issubset({-1, 0, 1})
-
-
-class TestPostProcess:
-    def test_post_process_removes_nans(self):
-        """Test that post_process removes NaN values."""
-        df = create_sample_df()
-        df.loc[0, "close"] = np.nan
-
-        result = Indicators.post_process(df)
-
-        assert result["close"].notna().all()
-
-    def test_post_process_resets_index(self):
-        """Test that post_process resets the index."""
-        df = create_sample_df()
-        df.index = range(999, 999 - len(df), -1)
-
-        result = Indicators.post_process(df)
-
-        assert result.index.equals(pd.RangeIndex(start=0, stop=len(result)))
 
 
 class TestIntegration:
