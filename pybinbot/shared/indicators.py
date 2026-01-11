@@ -1,11 +1,5 @@
 from typing import cast
-from pandas import DataFrame, Series, Timedelta, concat, to_datetime, to_numeric
-from pybinbot.shared.enums import ExchangeId
-from pybinbot.shared.heikin_ashi import HeikinAshi
-
-"""
-Dataframe operations shared across projects
-"""
+from pandas import DataFrame, Series, Timedelta, concat, to_datetime
 
 
 class Indicators:
@@ -14,95 +8,6 @@ class Indicators:
     this avoids using ta-lib because that requires
     dependencies that causes issues in the infrastructure
     """
-
-    binance_cols = [
-        "open_time",
-        "open",
-        "high",
-        "low",
-        "close",
-        "volume",
-        "close_time",
-        "quote_asset_volume",
-        "number_of_trades",
-        "taker_buy_base_asset_volume",
-        "taker_buy_quote_asset_volume",
-    ]
-    kucoin_cols = [
-        "open_time",
-        "open",
-        "high",
-        "low",
-        "close",
-        "volume",
-        "close_time",
-        "quote_asset_volume",
-    ]
-
-    def pre_process(self, exchange, candles):
-        df = DataFrame(candles)
-        df_1h = DataFrame()
-        df_4h = DataFrame()
-        if exchange == ExchangeId.BINANCE:
-            df = df[self.binance_cols]
-            columns = self.binance_cols
-        else:
-            df = df[self.kucoin_cols]
-            columns = self.kucoin_cols
-
-        # Ensure the dataframe has exactly these columns
-        if len(df.columns) != len(columns):
-            raise ValueError(
-                f"Column mismatch: {len(df.columns)} vs expected {len(columns)}"
-            )
-
-        # Convert only numeric columns safely
-        numeric_cols = ["open", "high", "low", "close", "volume"]
-        for col in numeric_cols:
-            df[col] = to_numeric(df[col], errors="coerce")
-
-        df = HeikinAshi.get_heikin_ashi(df)
-
-        # Ensure close_time is datetime and set as index for proper resampling
-        df["timestamp"] = to_datetime(df["close_time"], unit="ms")
-        df.set_index("timestamp", inplace=True)
-        df = df.sort_index()
-        df = df[~df.index.duplicated(keep="last")]
-
-        # Create aggregation dictionary without close_time and open_time since they're now index-based
-        resample_aggregation = {
-            "open": "first",
-            "close": "last",
-            "high": "max",
-            "low": "min",
-            "volume": "sum",  # Add volume if it exists in your data
-            "close_time": "first",
-            "open_time": "first",
-        }
-
-        # Resample to 4 hour candles for TWAP (align to calendar hours like MongoDB)
-        df_4h = df.resample("4h").agg(resample_aggregation)
-        # Add open_time and close_time back as columns for 4h data
-        df_4h["open_time"] = df_4h.index
-        df_4h["close_time"] = df_4h.index
-
-        # Resample to 1 hour candles for Supertrend (align to calendar hours like MongoDB)
-        df_1h = df.resample("1h").agg(resample_aggregation)
-        # Add open_time and close_time back as columns for 1h data
-        df_1h["open_time"] = df_1h.index
-        df_1h["close_time"] = df_1h.index
-
-        return df, df_1h, df_4h
-
-    @staticmethod
-    def post_process(df: DataFrame) -> DataFrame:
-        """
-        Post-process the DataFrame by filling missing values and
-        converting data types as needed.
-        """
-        df.dropna(inplace=True)
-        df.reset_index(drop=True, inplace=True)
-        return df
 
     @staticmethod
     def moving_averages(df: DataFrame, period=7) -> DataFrame:
