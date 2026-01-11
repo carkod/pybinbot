@@ -40,12 +40,12 @@ or
 make bump-major
 ```
 
-3. Git tag the version for Github. This will read the bump version.
+3. Git tag the version for Github. This will read the bump version. There's a convenience command:
 ```
 make tag
 ```
 
-4. Git push
+4. `git commit --amend`. This is to put these new changes in the previous commit so we don't dup uncessary commits. Then `git push`
 
 
 For further commands take a look at the `Makefile` such as testing `make test`
