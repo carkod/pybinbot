@@ -6,6 +6,7 @@ VENV=.venv
 
 format:
 	@uv run ruff format .
+	@uv run ruff check .  --fix
 	@uv run mypy pybinbot tests --explicit-package-bases
 
 lint:
