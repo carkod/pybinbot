@@ -48,24 +48,56 @@ from pybinbot.shared.indicators import Indicators
 from pybinbot.shared.heikin_ashi import HeikinAshi
 from pybinbot.shared.logging_config import configure_logging
 from pybinbot.shared.types import Amount
+from pybinbot.shared.cache import cache
+from pybinbot.shared.handlers import handle_binance_errors, aio_response_handler
 from pybinbot.models.bot_base import BotBase
 from pybinbot.models.deal import DealBase
 from pybinbot.models.order import OrderBase
 from pybinbot.models.signals import HABollinguerSpread, SignalsConsumer
+from pybinbot.models.routes import StandardResponse
+from pybinbot.apis.binance.base import BinanceApi
+from pybinbot.apis.binbot.base import BinbotApi
+from pybinbot.apis.binbot.exceptions import (
+    BinbotErrors,
+    QuantityTooLow,
+    IsolateBalanceError,
+    DealCreationError,
+    MarginShortError,
+    MarginLoanNotFound,
+    DeleteOrderError,
+    LowBalanceCleanupError,
+    SaveBotError,
+    InsufficientBalance,
+)
+from pybinbot.apis.kucoin.base import KucoinApi
+from pybinbot.apis.kucoin.exceptions import KucoinErrors
+from pybinbot.apis.binance.exceptions import (
+    BinanceErrors,
+    InvalidSymbol,
+    NotEnoughFunds,
+)
 
-from . import models, shared
+
+from . import models, shared, apis
 
 __all__ = [
     # subpackages
     "shared",
     "models",
+    "apis",
     # models
     "BotBase",
     "OrderBase",
     "DealBase",
+    "StandardResponse",
+    "HABollinguerSpread",
+    "SignalsConsumer",
     # misc
     "Amount",
     "configure_logging",
+    "cache",
+    "handle_binance_errors",
+    "aio_response_handler",
     # maths helpers
     "supress_trailling",
     "round_numbers",
@@ -107,4 +139,23 @@ __all__ = [
     "HABollinguerSpread",
     "SignalsConsumer",
     "MarketDominance",
+    # exchange apis
+    "BinbotApi",
+    "BinanceApi",
+    "KucoinApi",
+    "KucoinErrors",
+    # exceptions
+    "BinanceErrors",
+    "InvalidSymbol",
+    "NotEnoughFunds",
+    "BinbotErrors",
+    "QuantityTooLow",
+    "IsolateBalanceError",
+    "MarginShortError",
+    "MarginLoanNotFound",
+    "DeleteOrderError",
+    "LowBalanceCleanupError",
+    "DealCreationError",
+    "SaveBotError",
+    "InsufficientBalance",
 ]
