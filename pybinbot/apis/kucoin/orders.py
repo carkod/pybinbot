@@ -2,7 +2,7 @@ import random
 import uuid
 import logging
 from time import sleep, time
-from pybinbot.apis.kucoin.rest import KucoinRest
+from pybinbot.apis.kucoin.market import KucoinMarket
 from kucoin_universal_sdk.generate.spot.order.model_add_order_sync_resp import (
     AddOrderSyncResp,
 )
@@ -60,7 +60,7 @@ from kucoin_universal_sdk.generate.spot.market import (
 )
 
 
-class KucoinOrders(KucoinRest):
+class KucoinOrders(KucoinMarket):
     """
     Convienience wrapper for Kucoin order operations.
 
@@ -69,8 +69,8 @@ class KucoinOrders(KucoinRest):
 
     TRANSACTION_COOLDOWN_SECONDS = 1
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, key: str, secret: str, passphrase: str):
+        super().__init__(key=key, secret=secret, passphrase=passphrase)
         self.client = self.setup_client()
         self.spot_api = self.client.rest_service().get_spot_service().get_market_api()
         self.order_api = self.client.rest_service().get_spot_service().get_order_api()
@@ -246,29 +246,37 @@ class KucoinOrders(KucoinRest):
             Buy order = get bid prices = False
             Sell order = get ask prices = True
         """
-        # Part order book only returns top 1 level at time of writing
+        # --- Step 1: Get order book ---
         data = self.get_full_order_book(symbol, size=10)
-        price = data.bids[0][0] if order_side else data.asks[0][0]
-        base_qty = data.bids[0][1] if order_side else data.asks[0][1]
 
-        if qty == 0:
-            return float(price)
-        else:
-            buyable_qty = float(qty) / float(price)
-            if buyable_qty < float(base_qty):
-                return float(price)
-            else:
-                for i in range(1, 11):
-                    price = data.bids[i][0] if order_side else data.asks[i][0]
-                    base_qty = data.bids[i][1] if order_side else data.asks[i][1]
-                    buyable_qty = float(qty) / float(price)
-                    base_qty = 1
-                    if buyable_qty > float(base_qty):
-                        return float(price)
-                    else:
-                        continue
-                # caller to use market price
-                return 0
+        # top-of-book price and available qty
+        top_price = data.asks[0][0] if order_side else data.bids[0][0]
+        top_qty = float(data.asks[0][1] if order_side else data.bids[0][1])
+
+        # --- Step 2: Compute VWAP for last 5 candles ---
+        candles = self.get_ui_klines(symbol, interval="1m", limit=5)
+        total_volume = sum(float(c[5]) for c in candles)  # c[5] = volume
+        vwap = (
+            sum(float(c[4]) * float(c[5]) for c in candles) / total_volume
+        )  # c[4] = close
+
+        # --- Step 3: Determine safe price based on VWAP and top-of-book ---
+        safe_offset = 0.002  # 0.2%
+        if order_side:  # sell
+            # Never above top ask, slightly above VWAP
+            safe_price = min(top_price, vwap * (1 + safe_offset))
+        else:  # buy
+            # Never below top bid, slightly below VWAP
+            safe_price = max(top_price, vwap * (1 - safe_offset))
+
+        # --- Step 4: Ensure top-of-book has enough liquidity for qty ---
+        # qty here is in quote currency, convert to base qty
+        base_qty_needed = float(qty) / safe_price
+        if base_qty_needed > top_qty:
+            # Not enough at top level; fallback to top-of-book price to guarantee execution
+            safe_price = top_price
+
+        return safe_price
 
     def buy_order(
         self,
