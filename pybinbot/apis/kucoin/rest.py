@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 from os import getenv
 from kucoin_universal_sdk.api import DefaultClient
 from kucoin_universal_sdk.model import TransportOptionBuilder
@@ -5,13 +6,13 @@ from kucoin_universal_sdk.model import ClientOptionBuilder
 from kucoin_universal_sdk.model import (
     GLOBAL_API_ENDPOINT,
 )
-
+load_dotenv()
 
 class KucoinRest:
-    def __init__(self):
-        self.key = getenv("KUCOIN_KEY", "")
-        self.secret = getenv("KUCOIN_SECRET", "")
-        self.passphrase = getenv("KUCOIN_PASSPHRASE", "")
+    def __init__(self, key=None, secret=None, passphrase=None):
+        self.key = key or getenv("KUCOIN_KEY", "")
+        self.secret = secret or getenv("KUCOIN_SECRET", "")
+        self.passphrase = passphrase or getenv("KUCOIN_PASSPHRASE", "")
 
     def setup_client(self) -> DefaultClient:
         http_transport_option = (
