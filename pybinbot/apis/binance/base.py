@@ -1,6 +1,5 @@
 import hashlib
 import hmac
-import os
 from decimal import Decimal
 from random import randrange
 from urllib.parse import urlencode
@@ -30,8 +29,6 @@ class BinanceApi:
     tags_url = "https://www.binance.com/bapi/asset/v2/public/asset-service/product/get-product-by-symbol"
 
     recvWindow = 9000
-    secret: str = os.getenv("BINANCE_SECRET", "abc")
-    key: str = os.getenv("BINANCE_KEY", "abc")
     server_time_url = f"{MARKET_DATA_BASE}/api/v3/time"
     # Binance always returning forbidden for other APIs
     account_url = f"{api_servers[1]}/api/v3/account"
@@ -70,6 +67,11 @@ class BinanceApi:
     max_borrow_url = f"{BASE}/sapi/v1/margin/maxBorrowable"
     interest_history_url = f"{BASE}/sapi/v1/margin/interestHistory"
     manual_liquidation_url = f"{BASE}/sapi/v1/margin/manual-liquidation"
+
+    def __init__(self, key, secret) -> None:
+        self.secret: str = secret
+        self.key: str = key
+        pass
 
     def request(
         self,
@@ -185,7 +187,7 @@ class BinanceApi:
         """
         symbols = self.exchange_info(symbol)
         market = symbols["symbols"][0]
-        quantity_filter: list = next(
+        quantity_filter = next(
             (m for m in market["filters"] if m["filterType"] == "LOT_SIZE")
         )
         return quantity_filter[lot_size_limit].rstrip(".0")
