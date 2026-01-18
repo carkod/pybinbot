@@ -47,7 +47,7 @@ from pybinbot.shared.enums import (
 from pybinbot.shared.indicators import Indicators
 from pybinbot.shared.heikin_ashi import HeikinAshi
 from pybinbot.shared.logging_config import configure_logging
-from pybinbot.shared.types import Amount
+from pybinbot.shared.types import Amount, CombinedApis
 from pybinbot.shared.cache import cache
 from pybinbot.shared.handlers import handle_binance_errors, aio_response_handler
 from pybinbot.models.bot_base import BotBase
@@ -94,6 +94,7 @@ __all__ = [
     "SignalsConsumer",
     # misc
     "Amount",
+    "CombinedApis",
     "configure_logging",
     "cache",
     "handle_binance_errors",
