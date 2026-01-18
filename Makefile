@@ -35,3 +35,4 @@ tag: ## Tag the current version from pyproject.toml (no commit or push)
 	@VERSION=$$(grep '^version\s*=\s*"[0-9]\+\.[0-9]\+\.[0-9]\+"' pyproject.toml | head -1 | sed -E 's/.*"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/') ; \
 		echo "Tagging v$$VERSION" ; \
 		git tag "v$$VERSION"
+		git push origin --tags
