@@ -59,6 +59,8 @@ from kucoin_universal_sdk.generate.spot.market import (
     GetFullOrderBookReqBuilder,
 )
 
+from pybinbot.shared.enums import KucoinKlineIntervals
+
 
 class KucoinOrders(KucoinMarket):
     """
@@ -250,11 +252,13 @@ class KucoinOrders(KucoinMarket):
         data = self.get_full_order_book(symbol, size=10)
 
         # top-of-book price and available qty
-        top_price = data.asks[0][0] if order_side else data.bids[0][0]
-        top_qty = float(data.asks[0][1] if order_side else data.bids[0][1])
+        top_price = float(data.asks[0][0]) if order_side else float(data.bids[0][0])
+        top_qty = float(data.asks[0][1]) if order_side else float(data.bids[0][1])
 
         # --- Step 2: Compute VWAP for last 5 candles ---
-        candles = self.get_ui_klines(symbol, interval="1m", limit=5)
+        candles = self.get_ui_klines(
+            symbol, interval=KucoinKlineIntervals.ONE_MINUTE.value, limit=5
+        )
         total_volume = sum(float(c[5]) for c in candles)  # c[5] = volume
         vwap = (
             sum(float(c[4]) * float(c[5]) for c in candles) / total_volume
