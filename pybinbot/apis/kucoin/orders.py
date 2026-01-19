@@ -257,9 +257,9 @@ class KucoinOrders(KucoinMarket):
 
         # --- Step 2: Compute VWAP for last 5 candles ---
         candles = self.get_ui_klines(
-            symbol, interval=KucoinKlineIntervals.ONE_MINUTE.value, limit=5
+            symbol, interval=KucoinKlineIntervals.FIFTEEN_MINUTES.value, limit=10
         )
-        total_volume = sum(float(c[5]) for c in candles)  # c[5] = volume
+        total_volume = sum(float(c[5]) for c in candles)
         vwap = (
             sum(float(c[4]) * float(c[5]) for c in candles) / total_volume
         )  # c[4] = close
