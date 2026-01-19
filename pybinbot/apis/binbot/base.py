@@ -15,7 +15,7 @@ class BinbotApi:
     includes Binance Api
     """
 
-    bb_base_url = os.getenv("FLASK_DOMAIN")
+    bb_base_url = os.getenv("BACKEND_DOMAIN", "https://api.terminal.binbot.in")
     bb_symbols_raw = f"{bb_base_url}/account/symbols"
     bb_bot_url = f"{bb_base_url}/bot"
     bb_activate_bot_url = f"{bb_base_url}/bot/activate"
