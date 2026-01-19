@@ -252,8 +252,8 @@ class KucoinOrders(KucoinMarket):
         data = self.get_full_order_book(symbol, size=10)
 
         # top-of-book price and available qty
-        top_price = data.asks[0][0] if order_side else data.bids[0][0]
-        top_qty = float(data.asks[0][1] if order_side else data.bids[0][1])
+        top_price = float(data.asks[0][0]) if order_side else float(data.bids[0][0])
+        top_qty = float(data.asks[0][1]) if order_side else float(data.bids[0][1])
 
         # --- Step 2: Compute VWAP for last 5 candles ---
         candles = self.get_ui_klines(
