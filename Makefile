@@ -19,14 +19,17 @@ test:
 bump-patch:
 	@uv build
 	@PART=patch $(MAKE) _bump-version
+	@make tag
 
 bump-minor:
 	@uv build
 	@PART=minor $(MAKE) _bump-version
+	@make tag
 
 bump-major:
 	@uv build
 	@PART=major $(MAKE) _bump-version
+	@make tag
 
 _bump-version:
 	@uv run python tools/bump_version.py
