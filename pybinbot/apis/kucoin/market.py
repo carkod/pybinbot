@@ -1,3 +1,4 @@
+import logging
 from pybinbot.apis.kucoin.rest import KucoinRest
 from pybinbot import KucoinKlineIntervals
 from datetime import datetime
@@ -65,6 +66,7 @@ class KucoinMarket(KucoinRest):
 
         request = builder.build()
         response = self.spot_api.get_klines(request)
+        logging.error(f'get_ui_klines rate limit remaining: {response.common_response.rate_limit.remaining}')
 
         # Convert Kucoin format to Binance-compatible format
         # Kucoin returns: [time, open, close, high, low, volume, turnover]
