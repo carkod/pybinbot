@@ -42,7 +42,6 @@ class AsyncProducer:
             max_batch_size=max_batch_size,
             compression_type=compression_type,
             partitioner=self.partitioner,
-            max_in_flight_requests_per_connection=max_in_flight_requests_per_connection,
             retry_backoff_ms=retry_backoff_ms,
         )
 
