@@ -19,18 +19,34 @@ class AsyncProducer:
         partitioner: str = "murmur2",
         linger_ms: int = 5,
         aks: str | int = 1,
+        max_in_flight_requests_per_connection: int = 5,
+        retry_backoff_ms: int = 100,
+        compression_type: str | None = None,
+        max_batch_size: int = 8192,
+        request_timeout_ms: int = 15000,
+        enable_idempotence: bool = False,
     ) -> None:
         super().__init__()
-        self._producer = AIOKafkaProducer()
         self._started = False
         self.host = host
         self.port = str(port)
         # this is set to anything random to force it to start clean
         self.partitioner = partitioner
-        self.linger_ms = linger_ms
-        self.aks = aks
+        self.producer = AIOKafkaProducer(
+            bootstrap_servers=f"{self.host}:{self.port}",
+            linger_ms=linger_ms,
+            acks=aks,
+            enable_idempotence=enable_idempotence,
+            request_timeout_ms=request_timeout_ms,
+            value_serializer=self.serialize_value,
+            max_batch_size=max_batch_size,
+            compression_type=compression_type,
+            partitioner=self.partitioner,
+            max_in_flight_requests_per_connection=max_in_flight_requests_per_connection,
+            retry_backoff_ms=retry_backoff_ms,
+        )
 
-    def serialize_value(v):
+    def serialize_value(self, v):
         """Serialize value to bytes. If already a JSON string, just encode. Otherwise JSON-encode first."""
         if isinstance(v, str):
             return v.encode("utf-8")
@@ -38,28 +54,13 @@ class AsyncProducer:
 
     async def start(self) -> AIOKafkaProducer:
         if self._started:
-            assert self._producer is not None
-            return self._producer
+            assert self.producer is not None
+            return self.producer
 
-        bootstrap = f"{self.host}:{self.port}"
-
-        self._producer = AIOKafkaProducer(
-            bootstrap_servers=bootstrap,
-            linger_ms=5,
-            acks=1,
-            enable_idempotence=False,
-            request_timeout_ms=15000,
-            value_serializer=self.serialize_value,
-            max_batch_size=8192,
-            compression_type=None,
-            partitioner=self.partitioner,
-            max_in_flight_requests_per_connection=5,
-            retry_backoff_ms=100,
-        )
-        await self._producer.start()
+        await self.producer.start()
         self._started = True
         logger.debug("AIOKafkaProducer started (bootstrap=%s)", bootstrap)
-        return self._producer
+        return self.producer
 
     async def send(
         self, topic: str, value: dict | str, key: str, timestamp: int | None = None
@@ -67,14 +68,14 @@ class AsyncProducer:
         """
         Send a message to Kafka. Value will be JSON serialized.
         """
-        if not self._started or not self._producer:
+        if not self._started or not self.producer:
             raise RuntimeError("Producer not started. Call await start() first.")
 
         logger.debug(
             f"Sending to topic={topic}, key={key}, value_type={type(value).__name__}"
         )
 
-        await self._producer.send_and_wait(
+        await self.producer.send_and_wait(
             topic=topic,
             value=value,
             key=str(key).encode("utf-8"),
@@ -84,8 +85,8 @@ class AsyncProducer:
         logger.debug(f"Successfully sent message to {topic}")
 
     async def stop(self) -> None:
-        if self._producer and self._started:
-            await self._producer.stop()
+        if self.producer and self._started:
+            await self.producer.stop()
             logger.info("AIOKafkaProducer stopped")
-        self._producer = None
+        self.producer = None
         self._started = False
