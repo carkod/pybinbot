@@ -16,10 +16,8 @@ class AsyncProducer:
         self,
         host: str,
         port: int = 29092,
-        partitioner: str = "murmur2",
         linger_ms: int = 5,
         aks: str | int = 1,
-        max_in_flight_requests_per_connection: int = 5,
         retry_backoff_ms: int = 100,
         compression_type: str | None = None,
         max_batch_size: int = 8192,
@@ -31,7 +29,6 @@ class AsyncProducer:
         self.host = host
         self.port = str(port)
         # this is set to anything random to force it to start clean
-        self.partitioner = partitioner
         self.producer = AIOKafkaProducer(
             bootstrap_servers=f"{self.host}:{self.port}",
             linger_ms=linger_ms,
@@ -41,8 +38,6 @@ class AsyncProducer:
             value_serializer=self.serialize_value,
             max_batch_size=max_batch_size,
             compression_type=compression_type,
-            partitioner=self.partitioner,
-            max_in_flight_requests_per_connection=max_in_flight_requests_per_connection,
             retry_backoff_ms=retry_backoff_ms,
         )
 
