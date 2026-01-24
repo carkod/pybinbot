@@ -53,7 +53,11 @@ from pybinbot.shared.handlers import handle_binance_errors, aio_response_handler
 from pybinbot.models.bot_base import BotBase
 from pybinbot.models.deal import DealBase
 from pybinbot.models.order import OrderBase
-from pybinbot.models.signals import HABollinguerSpread, SignalsConsumer
+from pybinbot.models.signals import (
+    HABollinguerSpread,
+    SignalsConsumer,
+    KlineProduceModel,
+)
 from pybinbot.models.routes import StandardResponse
 from pybinbot.apis.binance.base import BinanceApi
 from pybinbot.apis.binbot.base import BinbotApi
@@ -76,6 +80,12 @@ from pybinbot.apis.binance.exceptions import (
     InvalidSymbol,
     NotEnoughFunds,
 )
+from pybinbot.streaming.async_producer import AsyncProducer
+from pybinbot.streaming.binance.async_socket_client import (
+    AsyncSpotWebsocketStreamClient,
+)
+from pybinbot.streaming.binance.socket_client import SpotWebsocketStreamClient
+from pybinbot.streaming.kucoin.kucoin_async_client import AsyncKucoinWebsocketClient
 
 
 from . import models, shared, apis
@@ -92,6 +102,7 @@ __all__ = [
     "StandardResponse",
     "HABollinguerSpread",
     "SignalsConsumer",
+    "KlineProduceModel",
     # misc
     "Amount",
     "CombinedApis",
@@ -159,4 +170,9 @@ __all__ = [
     "DealCreationError",
     "SaveBotError",
     "InsufficientBalance",
+    # streaming
+    "AsyncProducer",
+    "AsyncSpotWebsocketStreamClient",
+    "SpotWebsocketStreamClient",
+    "AsyncKucoinWebsocketClient",
 ]
