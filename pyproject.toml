@@ -7,6 +7,9 @@ packages = [
     "pybinbot.apis.binance",
     "pybinbot.apis.binbot",
     "pybinbot.apis.kucoin",
+    "pybinbot.streaming",
+    "pybinbot.streaming.binance",
+    "pybinbot.streaming.kucoin",
 ]
 
 [tool.setuptools.package-data]
@@ -19,7 +22,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pybinbot"
-version = "0.4.17"
+version = "0.4.20"
 description = "Utility functions for the binbot project."
 authors = [
     { name="Carlos Wu", email="carkodw@gmail.com" }
@@ -36,6 +39,7 @@ dependencies = [
     "kucoin-universal-sdk>=1.3.0",
     "aiohttp>=3.13.3",
     "python-dotenv>=1.2.1",
+    "aiokafka>=0.13.0",
 ]
 
 [project.optional-dependencies]
