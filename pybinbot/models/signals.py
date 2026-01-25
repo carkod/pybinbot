@@ -1,7 +1,8 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from pybinbot.shared.enums import Strategy
 
 
 class HABollinguerSpread(BaseModel):
@@ -19,13 +20,15 @@ class SignalsConsumer(BaseModel):
     date: str = Field(
         default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     )
-    spread: Optional[float] = Field(default=0)
-    current_price: Optional[float] = Field(default=0)
-    msg: str
+    spread: float = Field(default=0)
+    current_price: float = Field(default=0)
+    msg: str = Field(
+        description="Message to be sent to Telegram, written in HTML string"
+    )
     symbol: str
-    algo: str
-    bot_strategy: str = Field(default="long")
-    bb_spreads: Optional[HABollinguerSpread]
+    algo: str = Field(description="Algorithm name generating the signal")
+    bot_strategy: Strategy = Field(default=Strategy.long)
+    bb_spreads: HABollinguerSpread | None = Field(default=None)
     autotrade: bool = Field(default=True, description="If it is in testing mode, False")
 
     model_config = ConfigDict(
