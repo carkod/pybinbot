@@ -23,7 +23,6 @@ class BinbotApi:
     bb_market_domination = f"{bb_base_url}/charts/market-domination"
     bb_top_gainers = f"{bb_base_url}/charts/top-gainers"
     bb_top_losers = f"{bb_base_url}/charts/top-losers"
-    bb_btc_correlation_url = f"{bb_base_url}/charts/btc-correlation"
     bb_timeseries_url = f"{bb_base_url}/charts/timeseries"
     bb_adr_series_url = f"{bb_base_url}/charts/adr-series"
 
@@ -299,18 +298,6 @@ class BinbotApi:
         """
         response = await self.fetch(url=self.bb_top_losers)
         return response["data"]
-
-    def get_btc_correlation(self, symbol) -> tuple[float, float]:
-        """
-        Get BTC correlation and 24hr price change
-        """
-        response = self.request(
-            url=self.bb_btc_correlation_url, params={"symbol": symbol}
-        )
-        data = response["data"]
-        correlation = float(data["correlation"])
-        price_change_24hr = float(data["24hr_price_change"])
-        return correlation, price_change_24hr
 
     def price_precision(self, symbol) -> int:
         """
