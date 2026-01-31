@@ -90,6 +90,8 @@ from pybinbot.streaming.kucoin.kucoin_async_client import AsyncKucoinWebsocketCl
 
 from . import models, shared, apis
 
+configure_logging()
+
 __all__ = [
     # subpackages
     "shared",
