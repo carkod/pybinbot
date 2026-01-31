@@ -68,6 +68,10 @@ class KucoinMarket(KucoinRest):
         response = self.spot_api.get_klines(request)
         if int(response.common_response.rate_limit.remaining) < 500:
             logging.warning(
+                f"get_ui_klines rate limit remaining less than 500: {response.common_response.rate_limit.remaining}"
+            )
+        else:
+            logging.info(
                 f"get_ui_klines rate limit remaining: {response.common_response.rate_limit.remaining}"
             )
 
