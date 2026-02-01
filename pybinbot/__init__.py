@@ -43,6 +43,7 @@ from pybinbot.shared.enums import (
     TimeInForce,
     TrendEnum,
     UserRoles,
+    MarketType,
 )
 from pybinbot.shared.indicators import Indicators
 from pybinbot.shared.heikin_ashi import HeikinAshi
@@ -153,6 +154,7 @@ __all__ = [
     "HABollinguerSpread",
     "SignalsConsumer",
     "MarketDominance",
+    "MarketType",
     # exchange apis
     "BinbotApi",
     "BinanceApi",
