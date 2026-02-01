@@ -16,7 +16,9 @@ def configure_logging(
     force: bool = True,
     quiet_loggers: Iterable[str] | None = ("uvicorn", "confluent_kafka"),
 ) -> None:
-    """Configure root logging consistently across services."""
+    """
+    Configure root logging consistently across services.
+    """
     resolved_level = str(level or os.environ.get("LOG_LEVEL", "INFO")).upper()
     logging.basicConfig(
         level=resolved_level,
@@ -38,3 +40,13 @@ def configure_logging(
         utc,
         force,
     )
+    # Add timestamp formatter for uvicorn loggers
+    for logger_name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        logger = logging.getLogger(logger_name)
+        for handler in logger.handlers:
+            handler.setFormatter(
+                logging.Formatter(
+                    fmt="%(asctime)s UTC | %(levelname)s | %(name)s: %(message)s",
+                    datefmt="%Y-%m-%d %H:%M:%S",
+                )
+            )
