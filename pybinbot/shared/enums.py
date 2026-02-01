@@ -281,3 +281,25 @@ class MarketDominance(str, Enum):
     NEUTRAL = "neutral"
     GAINERS = "gainers"
     LOSERS = "losers"
+
+
+class MarketType(str, Enum):
+    SPOT = "SPOT"
+    MARGIN = "MARGIN"
+    FUTURES = "FUTURES"
+
+    @classmethod
+    def from_name(cls, name: str) -> "MarketType":
+        """
+        Map internal name to uppercase API market type.
+        Accepts 'spot', 'margin', 'futures' (case-insensitive).
+        """
+        mapping = {
+            "spot": cls.SPOT,
+            "margin": cls.MARGIN,
+            "futures": cls.FUTURES,
+        }
+        key = name.lower()
+        if key not in mapping:
+            raise ValueError(f"Unknown market type: {name}")
+        return mapping[key]

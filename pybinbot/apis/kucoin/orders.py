@@ -58,8 +58,7 @@ from kucoin_universal_sdk.generate.spot.market import (
     GetPartOrderBookReqBuilder,
     GetFullOrderBookReqBuilder,
 )
-
-from pybinbot.shared.enums import KucoinKlineIntervals
+from pybinbot import MarketType
 
 
 class KucoinOrders(KucoinMarket):
@@ -84,8 +83,12 @@ class KucoinOrders(KucoinMarket):
             self.client.rest_service().get_account_service().get_transfer_api()
         )
 
-    def _get_order_with_retry(
-        self, symbol: str, order_id: str, max_retries: int = 10
+    def get_order_with_retry(
+        self,
+        symbol: str,
+        order_id: str,
+        market_type: MarketType = MarketType.SPOT,
+        max_retries: int = 5,
     ) -> GetOrderByOrderIdResp | None:
         """
         Get order by ID with exponential backoff retry.
@@ -95,41 +98,24 @@ class KucoinOrders(KucoinMarket):
         - it is no longer active (order.active is False), and
         - id, price and size are all populated.
 
-        Exponential backoff: 2 ** attempt number / 10 = 100ms, 200ms, ...
         """
-        order = self.get_order_by_order_id(symbol=symbol, order_id=order_id)
-        if float(order.deal_size) == 0:
-            for attempt in range(max_retries):
-                logging.info(f"Attempt {attempt + 1} to get order {order_id}")
-                order = self.get_order_by_order_id(symbol=symbol, order_id=order_id)
+        get_order_by_order_id = self.get_order_by_order_id
+        if market_type == MarketType.MARGIN:
+            get_order_by_order_id = self.get_margin_order_by_order_id
 
-                if order is None:
-                    self._get_order_with_retry(symbol=symbol, order_id=order_id)
+        order = get_order_by_order_id(symbol=symbol, order_id=order_id)
+        if order and float(order.deal_size) > 0:
+            return order
 
-                if float(order.deal_size) > 0:
-                    return order
+        for attempt in range(max_retries):
+            logging.info(f"Attempt {attempt + 1} to get order {order_id}")
+            sleep(3 + attempt)
+            order = get_order_by_order_id(symbol=symbol, order_id=order_id)
 
-                sleep((2**attempt) / 10)
+            if order and float(order.deal_size) > 0:
+                return order
 
         return None
-
-    def _get_margin_order_with_retry(
-        self, symbol: str, order_id: str, max_retries: int = 10
-    ) -> GetOrderByOrderIdResp:
-        """
-        Get margin order by ID with exponential backoff retry.
-        KuCoin's order data is not immediately available after placement.
-        """
-        for attempt in range(max_retries):
-            order = self.get_margin_order_by_order_id(symbol=symbol, order_id=order_id)
-            if order and order.order_id:
-                return order
-            # Exponential backoff: 100ms, 200ms, 400ms, 800ms...
-            sleep((2**attempt) / 10)
-
-        raise TimeoutError(
-            f"Margin order {order_id} not ready after {max_retries} attempts"
-        )
 
     def get_part_order_book(self, symbol: str, size: int):
         request = (
@@ -154,8 +140,8 @@ class KucoinOrders(KucoinMarket):
         Fake synchronous order response shaped similarly to add_order_sync.
         Returns a dict echoing inputs and a computed price when missing.
         """
-        book_price = self.matching_engine(
-            symbol, order_side=(side == AddOrderSyncReq.SideEnum.SELL), qty=qty
+        book_price = self.simple_matching_engine(
+            symbol, order_side=(side == AddOrderSyncReq.SideEnum.SELL)
         )
         # fake data
         ts = int(time() * 1000)
@@ -210,7 +196,9 @@ class KucoinOrders(KucoinMarket):
         price = data.bids[0][0] if order_side else data.asks[0][0]
         return price
 
-    def matching_engine(self, symbol: str, order_side: bool, qty: float = 0) -> float:
+    def matching_engine(
+        self, symbol: str, order_side: bool, base_qty: float = 0
+    ) -> float | None:
         """
         Match quantity with available 100% fill order price,
         so that order can immediately buy/sell
@@ -221,39 +209,54 @@ class KucoinOrders(KucoinMarket):
             Buy order = get bid prices = False
             Sell order = get ask prices = True
         """
-        # --- Step 1: Get order book ---
-        data = self.get_full_order_book(symbol, size=10)
 
-        # top-of-book price and available qty
-        top_price = float(data.asks[0][0]) if order_side else float(data.bids[0][0])
-        top_qty = float(data.asks[0][1]) if order_side else float(data.bids[0][1])
+        book = self.get_full_order_book(symbol, size=10)
+        levels = book.asks if order_side else book.bids
 
-        # --- Step 2: Compute VWAP for last 5 candles ---
-        candles = self.get_ui_klines(
-            symbol, interval=KucoinKlineIntervals.FIFTEEN_MINUTES.value, limit=10
-        )
-        total_volume = sum(float(c[5]) for c in candles)
-        vwap = (
-            sum(float(c[4]) * float(c[5]) for c in candles) / total_volume
-        )  # c[4] = close
+        if not levels:
+            return None
 
-        # --- Step 3: Determine safe price based on VWAP and top-of-book ---
-        safe_offset = 0.002  # 0.2%
-        if order_side:  # sell
-            # Never above top ask, slightly above VWAP
-            safe_price = min(top_price, vwap * (1 + safe_offset))
-        else:  # buy
-            # Never below top bid, slightly below VWAP
-            safe_price = max(top_price, vwap * (1 - safe_offset))
+        remaining = base_qty
+        worst_price = None
+        best_price = float(levels[0][0])
 
-        # --- Step 4: Ensure top-of-book has enough liquidity for qty ---
-        # qty here is in quote currency, convert to base qty
-        base_qty_needed = float(qty) / safe_price
-        if base_qty_needed > top_qty:
-            # Not enough at top level; fallback to top-of-book price to guarantee execution
-            safe_price = top_price
+        if remaining <= 0:
+            return best_price
 
-        return safe_price
+        for price, qty in levels:
+            price = float(price)
+            qty = float(qty)
+
+            if qty <= 0:
+                continue
+
+            fill_qty = min(remaining, qty)
+            if fill_qty <= 0:
+                continue
+
+            remaining -= fill_qty
+            worst_price = price
+
+            if remaining <= 0:
+                break
+
+        # Not enough liquidity
+        if remaining > 0 or worst_price is None or best_price is None:
+            return None
+
+        # Safety check before arithmetic
+        if best_price <= 0 or worst_price <= 0:
+            return None
+
+        # Hard slippage cap given no market orders
+        if order_side is False:
+            if (worst_price - best_price) / best_price > 0.002:
+                return None
+        else:
+            if (best_price - worst_price) / best_price > 0.002:
+                return None
+
+        return worst_price
 
     def buy_order(
         self,
@@ -270,24 +273,36 @@ class KucoinOrders(KucoinMarket):
         we need to retrieve the order by order id after placing it.
         And because retrieving it is not immediate, we need to sleep delay
         """
-        book_price = self.matching_engine(symbol, order_side=False, qty=qty)
+        book_price = self.matching_engine(symbol, order_side=False, base_qty=qty)
         builder = (
             AddOrderSyncReqBuilder()
             .set_symbol(symbol)
             .set_side(AddOrderSyncReq.SideEnum.BUY)
             .set_type(order_type)
-            .set_size(str(qty))
-            .set_price(str(book_price))
         )
+        # is not None to screen when prices are 0 (rare event)
+        if book_price is not None:
+            builder = (
+                builder.set_price(str(book_price))
+                .set_type(AddOrderSyncReq.TypeEnum.LIMIT)
+                .set_size(str(qty))
+            )
+        else:
+            book = self.get_full_order_book(symbol, size=1)
+            best_ask = float(book.asks[0][0])
+            funds = qty * best_ask
+            builder = builder.set_type(AddOrderSyncReq.TypeEnum.MARKET).set_funds(
+                str(funds)
+            )
 
         req = builder.build()
         order_response = self.order_api.add_order_sync(req)
         # order_response returns incomplete info, retry with backoff
-        order = self._get_order_with_retry(
+        order = self.get_order_with_retry(
             symbol=symbol, order_id=order_response.order_id
         )
         if order is None:
-            self.buy_order(symbol=symbol, qty=qty, order_type=order_type)
+            raise RuntimeError("Order placement failed after retries")
         return order
 
     def sell_order(
@@ -297,7 +312,7 @@ class KucoinOrders(KucoinMarket):
         order_type: AddOrderSyncReq.TypeEnum = AddOrderSyncReq.TypeEnum.LIMIT,
     ) -> GetOrderByOrderIdResp:
         """
-        Wrapper for Kucoin add order for convenience and consistent interface with other exchanges.
+        Wrapper for KuCoin add order for convenience and consistent interface with other exchanges.
 
         Price is not provided so LIMIT orders can be filled immediately using matching engine.
 
@@ -305,24 +320,41 @@ class KucoinOrders(KucoinMarket):
         we need to retrieve the order by order id after placing it.
         And because retrieving it is not immediate, we need to sleep delay
         """
-        book_price = self.matching_engine(symbol, order_side=True, qty=qty)
+        # Get optimal fill price for given quantity
+        book_price = self.matching_engine(symbol, order_side=True, base_qty=qty)
+
         builder = (
             AddOrderSyncReqBuilder()
             .set_symbol(symbol)
             .set_side(AddOrderSyncReq.SideEnum.SELL)
             .set_type(order_type)
-            .set_size(str(qty))
-            .set_price(str(book_price))
         )
+
+        # If a valid top-of-book price is available, use LIMIT
+        if book_price is not None:
+            builder = (
+                builder.set_price(str(book_price))
+                .set_type(AddOrderSyncReq.TypeEnum.LIMIT)
+                .set_size(str(qty))
+            )
+        else:
+            # fallback to MARKET if no price returned (rare)
+            book = self.get_full_order_book(symbol, size=1)
+            best_bid = float(book.bids[0][0])
+            builder = builder.set_type(AddOrderSyncReq.TypeEnum.MARKET).set_funds(
+                str(qty * best_bid)
+            )
 
         req = builder.build()
         order_response = self.order_api.add_order_sync(req)
-        # order_response returns incomplete info, retry with backoff
-        order = self._get_order_with_retry(
+
+        # Ensure we have the complete order details
+        order = self.get_order_with_retry(
             symbol=symbol, order_id=order_response.order_id
         )
         if order is None:
-            self.sell_order(symbol=symbol, qty=qty, order_type=order_type)
+            raise RuntimeError("Sell order placement failed after retries")
+
         return order
 
     def batch_add_orders_sync(self, orders: list[dict]) -> AddOrderSyncResp:
@@ -409,8 +441,10 @@ class KucoinOrders(KucoinMarket):
         req = builder.build()
         order_response = self.margin_order_api.add_order(req)
         # order_response returns incomplete info, retry with backoff
-        order = self._get_margin_order_with_retry(
-            symbol=symbol, order_id=order_response.order_id
+        order = self.get_order_with_retry(
+            symbol=symbol,
+            order_id=order_response.order_id,
+            market_type=MarketType.MARGIN,
         )
         return order
 
@@ -446,8 +480,10 @@ class KucoinOrders(KucoinMarket):
         req = builder.build()
         order_response = self.margin_order_api.add_order(req)
         # order_response returns incomplete info, retry with backoff
-        order = self._get_margin_order_with_retry(
-            symbol=symbol, order_id=order_response.order_id
+        order = self.get_order_with_retry(
+            symbol=symbol,
+            order_id=order_response.order_id,
+            market_type=MarketType.MARGIN,
         )
         return order
 
@@ -486,8 +522,8 @@ class KucoinOrders(KucoinMarket):
         """
         Fake isolated margin order response echoing inputs.
         """
-        book_price = self.matching_engine(
-            symbol, order_side=(side == AddOrderReq.SideEnum.SELL), qty=qty
+        book_price = self.simple_matching_engine(
+            symbol, order_side=(side == AddOrderReq.SideEnum.SELL)
         )
         ts = int(time() * 1000)
         order_id = str(random.randint(1000000000, 9999999999))
