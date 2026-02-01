@@ -3,6 +3,12 @@ from kucoin_universal_sdk.generate.spot.market import (
     GetAllSymbolsReqBuilder,
     GetSymbolReqBuilder,
 )
+from kucoin_universal_sdk.generate.spot.market.model_get_all_symbols_resp import (
+    GetAllSymbolsResp,
+)
+from kucoin_universal_sdk.generate.spot.market.model_get_symbol_resp import (
+    GetSymbolResp,
+)
 from kucoin_universal_sdk.generate.account.account import (
     GetSpotAccountListReqBuilder,
     GetIsolatedMarginAccountReqBuilder,
@@ -28,12 +34,12 @@ class KucoinApi(KucoinOrders):
             self.client.rest_service().get_account_service().get_account_api()
         )
 
-    def get_all_symbols(self):
+    def get_all_symbols(self) -> GetAllSymbolsResp:
         request = GetAllSymbolsReqBuilder().build()
         response = self.spot_api.get_all_symbols(request)
         return response
 
-    def get_symbol(self, symbol: str):
+    def get_symbol(self, symbol: str) -> GetSymbolResp:
         """
         Get single symbol data
         """
@@ -46,7 +52,7 @@ class KucoinApi(KucoinOrders):
         response = self.spot_api.get_ticker(request)
         return float(response.price)
 
-    def get_account_balance(self):
+    def get_account_balance(self) -> dict[str, dict[str, float]]:
         """
         Aggregate all balances from all account types (spot, main, trade, margin, futures).
 

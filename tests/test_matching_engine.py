@@ -23,9 +23,7 @@ def test_matching_engine_buy_order(kucoin_orders):
         return_value=mock_order_book(bids, asks)
     )
 
-    result = kucoin_orders.matching_engine(
-        "BTC-USDT", order_side=False, base_qty=2
-    )
+    result = kucoin_orders.matching_engine("BTC-USDT", order_side=False, base_qty=2)
 
     assert result == 100.0
 
@@ -37,9 +35,7 @@ def test_matching_engine_sell_order(kucoin_orders):
         return_value=mock_order_book(bids, asks)
     )
 
-    result = kucoin_orders.matching_engine(
-        "BTC-USDT", order_side=True, base_qty=2
-    )
+    result = kucoin_orders.matching_engine("BTC-USDT", order_side=True, base_qty=2)
 
     assert result == 102.0
 
@@ -51,12 +47,8 @@ def test_matching_engine_insufficient_liquidity(kucoin_orders):
         return_value=mock_order_book(bids, asks)
     )
 
-    result_buy = kucoin_orders.matching_engine(
-        "BTC-USDT", order_side=False, base_qty=2
-    )
-    result_sell = kucoin_orders.matching_engine(
-        "BTC-USDT", order_side=True, base_qty=2
-    )
+    result_buy = kucoin_orders.matching_engine("BTC-USDT", order_side=False, base_qty=2)
+    result_sell = kucoin_orders.matching_engine("BTC-USDT", order_side=True, base_qty=2)
 
     assert result_buy is None
     assert result_sell is None
@@ -70,12 +62,8 @@ def test_matching_engine_slippage_cap(kucoin_orders):
         return_value=mock_order_book(bids, asks)
     )
 
-    result_buy = kucoin_orders.matching_engine(
-        "BTC-USDT", order_side=False, base_qty=3
-    )
-    result_sell = kucoin_orders.matching_engine(
-        "BTC-USDT", order_side=True, base_qty=3
-    )
+    result_buy = kucoin_orders.matching_engine("BTC-USDT", order_side=False, base_qty=3)
+    result_sell = kucoin_orders.matching_engine("BTC-USDT", order_side=True, base_qty=3)
 
     assert result_buy == 98.0
     assert result_sell is None
