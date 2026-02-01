@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field, field_validator
 from pybinbot.shared.enums import (
     BinanceKlineIntervals,
     CloseConditions,
+    MarketType,
     QuoteAssets,
     Status,
     Strategy,
@@ -32,6 +33,7 @@ class BotBase(BaseModel):
     dynamic_trailling: bool = Field(default=False)
     logs: list = Field(default=[])
     mode: str = Field(default="manual")
+    market_type: MarketType = Field(default=MarketType.SPOT)
     name: str = Field(
         default="terminal",
         description="Algorithm name or 'terminal' if executed from React app",
@@ -73,6 +75,7 @@ class BotBase(BaseModel):
                     "dynamic_trailling": False,
                     "logs": [],
                     "mode": "manual",
+                    "market_type": "SPOT",
                     "name": "Default bot",
                     "status": "inactive",
                     "stop_loss": 0,
