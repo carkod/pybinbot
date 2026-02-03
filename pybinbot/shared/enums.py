@@ -303,3 +303,15 @@ class MarketType(str, Enum):
         if key not in mapping:
             raise ValueError(f"Unknown market type: {name}")
         return mapping[key]
+
+    @classmethod
+    def to_account_type(cls, market_type: "MarketType") -> str:
+        """
+        Convert MarketType to Kucoin account type string.
+        """
+        account_type_map = {
+            cls.SPOT: "SPOT",
+            cls.MARGIN: "MARGIN",
+            cls.FUTURES: "CONTRACT",
+        }
+        return account_type_map.get(market_type, "SPOT")
