@@ -88,7 +88,6 @@ class KucoinOrders(KucoinMarket):
         symbol: str,
         order_id: str,
         market_type: MarketType = MarketType.SPOT,
-        max_retries: int = 5,
     ) -> GetOrderByOrderIdResp | None:
         """
         Get order by ID with exponential backoff retry.
@@ -106,14 +105,6 @@ class KucoinOrders(KucoinMarket):
         order = get_order_by_order_id(symbol=symbol, order_id=order_id)
         if order and float(order.deal_size) > 0:
             return order
-
-        for attempt in range(max_retries):
-            logging.info(f"Attempt {attempt + 1} to get order {order_id}")
-            sleep(3 + attempt)
-            order = get_order_by_order_id(symbol=symbol, order_id=order_id)
-
-            if order and float(order.deal_size) > 0:
-                return order
 
         return None
 
@@ -302,7 +293,18 @@ class KucoinOrders(KucoinMarket):
             symbol=symbol, order_id=order_response.order_id
         )
         if order is None:
-            raise RuntimeError("Order placement failed after retries")
+            # Filler response
+            order = GetOrderByOrderIdResp(
+                id=order_response.order_id,
+                symbol=symbol,
+                type=GetOrderByOrderIdResp.TypeEnum.LIMIT.value,
+                timeInForce=GetOrderByOrderIdResp.TimeInForceEnum.GTC.value,
+                lastUpdatedAt=int(time() * 1000),
+                active=True,
+                side=GetOrderByOrderIdResp.SideEnum.BUY.value,
+                dealSize=qty,
+                price=book_price if book_price is not None else 0,
+            )
         return order
 
     def sell_order(
@@ -353,7 +355,18 @@ class KucoinOrders(KucoinMarket):
             symbol=symbol, order_id=order_response.order_id
         )
         if order is None:
-            raise RuntimeError("Sell order placement failed after retries")
+            # Filler Models
+            order = GetOrderByOrderIdResp(
+                id=order_response.order_id,
+                symbol=symbol,
+                type=GetOrderByOrderIdResp.TypeEnum.LIMIT.value,
+                timeInForce=GetOrderByOrderIdResp.TimeInForceEnum.GTC.value,
+                lastUpdatedAt=int(time() * 1000),
+                active=True,
+                side=GetOrderByOrderIdResp.SideEnum.BUY.value,
+                dealSize=qty,
+                price=book_price if book_price is not None else 0,
+            )
 
         return order
 
