@@ -107,6 +107,19 @@ class OrderStatus(str, Enum):
     REJECTED = "REJECTED"
     EXPIRED = "EXPIRED"
 
+    @classmethod
+    def map_from_kucoin_status(cls, kucoin_status: str) -> "OrderStatus":
+        """
+        Map Kucoin order status to internal OrderStatus enum.
+        Kucoin statuses: active, done, canceled
+        """
+        mapping = {
+            "open": cls.NEW,
+            "match": cls.PARTIALLY_FILLED,
+            "done": cls.FILLED,
+        }
+        return mapping.get(kucoin_status, cls.REJECTED)
+
 
 class TrendEnum(str, Enum):
     up_trend = "uptrend"
