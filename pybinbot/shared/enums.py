@@ -185,6 +185,7 @@ class BinanceKlineIntervals(str, Enum):
         }
         return interval_map.get(self.value, self.value)
 
+    @staticmethod
     def get_interval_ms(interval_str: str) -> int:
         """Convert Binance interval string to milliseconds"""
         interval_map = {
@@ -206,6 +207,12 @@ class BinanceKlineIntervals(str, Enum):
         }
         return interval_map.get(interval_str, 60 * 1000)  # Default to 1 minute
 
+    def get_ms(self) -> int:
+        """
+        Instance method to get interval duration in milliseconds
+        """
+        return self.get_interval_ms(self.value)
+
 
 class KucoinKlineIntervals(str, Enum):
     ONE_MINUTE = "1min"
@@ -223,8 +230,9 @@ class KucoinKlineIntervals(str, Enum):
     ONE_WEEK = "1week"
 
     # Helper to calculate interval duration in milliseconds
-    def get_interval_ms(interval_str: str) -> int:
-        """Convert Kucoin interval string to milliseconds"""
+    @staticmethod
+    def get_interval_ms(interval_str: str | None = None) -> int:
+        """Convert Kucoin interval string to milliseconds. Raises ValueError if not valid."""
         interval_map = {
             "1min": 60 * 1000,
             "3min": 3 * 60 * 1000,
@@ -240,7 +248,18 @@ class KucoinKlineIntervals(str, Enum):
             "1day": 24 * 60 * 60 * 1000,
             "1week": 7 * 24 * 60 * 60 * 1000,
         }
-        return interval_map.get(interval_str, 60 * 1000)  # Default to 1 minute
+        valid_intervals = {e.value for e in KucoinKlineIntervals}
+        if interval_str not in valid_intervals:
+            raise ValueError(
+                f"Invalid interval: {interval_str}. Must be one of: {sorted(valid_intervals)}"
+            )
+        return interval_map[interval_str]
+
+    def get_ms(self) -> int:
+        """
+        Instance method to get interval duration in milliseconds
+        """
+        return self.get_interval_ms(self.value)
 
 
 class AutotradeSettingsDocument(str, Enum):
