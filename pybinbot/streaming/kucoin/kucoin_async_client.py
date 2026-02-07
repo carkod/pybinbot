@@ -34,9 +34,7 @@ class AsyncKucoinWebsocketClient:
         self.interval = KucoinKlineIntervals.FIFTEEN_MINUTES
         # Track last emission time per symbol for deduplication (15min window)
         self._last_emission: dict[str, int] = {}  # symbol -> timestamp_ms
-        self._emission_cooldown_ms = KucoinKlineIntervals.get_interval_ms(
-            self.interval.value
-        )
+        self._emission_cooldown_ms = self.interval.get_ms()
         client_option = (
             ClientOptionBuilder()
             .set_key(os.getenv("KUCOIN_API_KEY", ""))

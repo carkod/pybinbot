@@ -17,18 +17,18 @@ test:
 	@uv run python -m pytest tests/
 
 bump-patch:
-	@uv build
 	@PART=patch $(MAKE) _bump-version
+	@uv build
 	@make tag
 
 bump-minor:
-	@uv build
 	@PART=minor $(MAKE) _bump-version
+	@uv build
 	@make tag
 
 bump-major:
-	@uv build
 	@PART=major $(MAKE) _bump-version
+	@uv build
 	@make tag
 
 _bump-version:
