@@ -396,24 +396,12 @@ class KucoinOrders(KucoinMarket):
         req = BatchAddOrdersSyncReqBuilder().set_order_list(order_list).build()
         return self.order_api.batch_add_orders_sync(req)
 
-    def cancel_order_by_order_id_sync(self, symbol: str, order_id: str):
-        req = (
-            CancelOrderByOrderIdSyncReqBuilder()
-            .set_symbol(symbol)
-            .set_order_id(order_id)
-            .build()
-        )
+    def cancel_order_by_order_id_sync(self, order_id: str):
+        req = CancelOrderByOrderIdSyncReqBuilder().set_order_id(order_id).build()
         return self.order_api.cancel_order_by_order_id_sync(req)
 
-    def get_order_by_order_id(
-        self, symbol: str, order_id: str
-    ) -> GetOrderByOrderIdResp:
-        req = (
-            GetOrderByOrderIdReqBuilder()
-            .set_symbol(symbol)
-            .set_order_id(order_id)
-            .build()
-        )
+    def get_order_by_order_id(self, order_id: str) -> GetOrderByOrderIdResp:
+        req = GetOrderByOrderIdReqBuilder().set_order_id(order_id).build()
         return self.order_api.get_order_by_order_id(req)
 
     def get_open_orders(self, symbol: str):
