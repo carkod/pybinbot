@@ -84,7 +84,6 @@ class KucoinOrders(KucoinMarket):
 
     def get_order_with_retry(
         self,
-        symbol: str,
         order_id: str,
         market_type: MarketType = MarketType.SPOT,
     ) -> GetOrderByOrderIdResp | None:
@@ -101,7 +100,7 @@ class KucoinOrders(KucoinMarket):
         if market_type == MarketType.MARGIN:
             get_order_by_order_id = self.get_margin_order_by_order_id
 
-        order = get_order_by_order_id(symbol=symbol, order_id=order_id)
+        order = get_order_by_order_id(order_id=order_id)
         if order and float(order.deal_size) > 0:
             return order
 
@@ -288,9 +287,7 @@ class KucoinOrders(KucoinMarket):
         req = builder.build()
         order_response = self.order_api.add_order_sync(req)
         # order_response returns incomplete info, retry with backoff
-        order = self.get_order_with_retry(
-            symbol=symbol, order_id=order_response.order_id
-        )
+        order = self.get_order_with_retry(order_id=order_response.order_id)
         if order is None:
             # Filler response
             order = GetOrderByOrderIdResp(
@@ -350,9 +347,7 @@ class KucoinOrders(KucoinMarket):
         order_response = self.order_api.add_order_sync(req)
 
         # Ensure we have the complete order details
-        order = self.get_order_with_retry(
-            symbol=symbol, order_id=order_response.order_id
-        )
+        order = self.get_order_with_retry(order_id=order_response.order_id)
         if order is None:
             # Filler Models
             order = GetOrderByOrderIdResp(
@@ -396,24 +391,12 @@ class KucoinOrders(KucoinMarket):
         req = BatchAddOrdersSyncReqBuilder().set_order_list(order_list).build()
         return self.order_api.batch_add_orders_sync(req)
 
-    def cancel_order_by_order_id_sync(self, symbol: str, order_id: str):
-        req = (
-            CancelOrderByOrderIdSyncReqBuilder()
-            .set_symbol(symbol)
-            .set_order_id(order_id)
-            .build()
-        )
+    def cancel_order_by_order_id_sync(self, order_id: str):
+        req = CancelOrderByOrderIdSyncReqBuilder().set_order_id(order_id).build()
         return self.order_api.cancel_order_by_order_id_sync(req)
 
-    def get_order_by_order_id(
-        self, symbol: str, order_id: str
-    ) -> GetOrderByOrderIdResp:
-        req = (
-            GetOrderByOrderIdReqBuilder()
-            .set_symbol(symbol)
-            .set_order_id(order_id)
-            .build()
-        )
+    def get_order_by_order_id(self, order_id: str) -> GetOrderByOrderIdResp:
+        req = GetOrderByOrderIdReqBuilder().set_order_id(order_id).build()
         return self.order_api.get_order_by_order_id(req)
 
     def get_open_orders(self, symbol: str):
@@ -454,7 +437,6 @@ class KucoinOrders(KucoinMarket):
         order_response = self.margin_order_api.add_order(req)
         # order_response returns incomplete info, retry with backoff
         order = self.get_order_with_retry(
-            symbol=symbol,
             order_id=order_response.order_id,
             market_type=MarketType.MARGIN,
         )
@@ -493,31 +475,18 @@ class KucoinOrders(KucoinMarket):
         order_response = self.margin_order_api.add_order(req)
         # order_response returns incomplete info, retry with backoff
         order = self.get_order_with_retry(
-            symbol=symbol,
             order_id=order_response.order_id,
             market_type=MarketType.MARGIN,
         )
         return order
 
-    def cancel_margin_order_by_order_id(self, symbol: str, order_id: str):
+    def cancel_margin_order_by_order_id(self, order_id: str):
         # Margin API uses cancel by order id req builder from margin.order
-        req_cancel = (
-            CancelOrderByOrderIdReqBuilder()
-            .set_symbol(symbol)
-            .set_order_id(order_id)
-            .build()
-        )
+        req_cancel = CancelOrderByOrderIdReqBuilder().set_order_id(order_id).build()
         return self.margin_order_api.cancel_order_by_order_id(req_cancel)
 
-    def get_margin_order_by_order_id(
-        self, symbol: str, order_id: str
-    ) -> GetOrderByOrderIdResp:
-        req = (
-            GetOrderByOrderIdReqBuilder()
-            .set_symbol(symbol)
-            .set_order_id(order_id)
-            .build()
-        )
+    def get_margin_order_by_order_id(self, order_id: str) -> GetOrderByOrderIdResp:
+        req = GetOrderByOrderIdReqBuilder().set_order_id(order_id).build()
         return self.margin_order_api.get_order_by_order_id(req)
 
     def get_margin_open_orders(self, symbol: str):
