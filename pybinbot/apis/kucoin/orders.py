@@ -24,6 +24,9 @@ from kucoin_universal_sdk.generate.spot.order.model_get_order_by_order_id_req im
 from kucoin_universal_sdk.generate.spot.order.model_get_open_orders_req import (
     GetOpenOrdersReqBuilder,
 )
+from kucoin_universal_sdk.generate.spot.order.model_get_trade_history_req import (
+    GetTradeHistoryReqBuilder,
+)
 from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
     AddOrderReq,
     AddOrderReqBuilder,
@@ -57,6 +60,7 @@ from kucoin_universal_sdk.generate.spot.market import (
     GetPartOrderBookReqBuilder,
     GetFullOrderBookReqBuilder,
 )
+from kucoin_universal_sdk.model.common import RestError
 from pybinbot import MarketType
 
 
@@ -395,9 +399,60 @@ class KucoinOrders(KucoinMarket):
         req = CancelOrderByOrderIdSyncReqBuilder().set_order_id(order_id).build()
         return self.order_api.cancel_order_by_order_id_sync(req)
 
-    def get_order_by_order_id(self, order_id: str) -> GetOrderByOrderIdResp:
+    def get_order_by_order_id(
+        self, order_id: str, symbol: str | None = None
+    ) -> GetOrderByOrderIdResp:
         req = GetOrderByOrderIdReqBuilder().set_order_id(order_id).build()
-        return self.order_api.get_order_by_order_id(req)
+        try:
+            return self.order_api.get_order_by_order_id(req)
+        except RestError as e:
+            # If the high-frequency order lookup fails (e.g. 400 Bad Request),
+            # and we know the symbol, fall back to trade history
+            # to reconstruct basic order details.
+            if "Invalid status code: 400" not in e.msg or symbol is None:
+                raise
+
+            trade_req = (
+                GetTradeHistoryReqBuilder()
+                .set_symbol(symbol)
+                .set_order_id(order_id)
+                .build()
+            )
+            trade_history = self.order_api.get_trade_history(trade_req)
+
+            if not trade_history or not trade_history.items:
+                # No trade data for this order either, re-raise original error
+                raise
+
+            first_fill = trade_history.items[0]
+
+            total_funds = 0.0
+            total_size = 0.0
+            for item in trade_history.items:
+                if item.funds is not None:
+                    total_funds += float(item.funds)
+                if item.size is not None:
+                    total_size += float(item.size)
+
+            avg_price = 0.0
+            if total_size > 0:
+                avg_price = total_funds / total_size if total_funds > 0 else 0.0
+            elif first_fill.price is not None:
+                avg_price = float(first_fill.price)
+
+            return GetOrderByOrderIdResp(
+                id=first_fill.order_id or order_id,
+                symbol=first_fill.symbol,
+                price=str(avg_price),
+                size=str(total_size) if total_size > 0 else first_fill.size,
+                funds=str(total_funds) if total_funds > 0 else first_fill.funds,
+                deal_size=str(total_size) if total_size > 0 else first_fill.size,
+                deal_funds=str(total_funds) if total_funds > 0 else first_fill.funds,
+                fee=first_fill.fee,
+                fee_currency=first_fill.fee_currency,
+                created_at=first_fill.created_at,
+                active=False,
+            )
 
     def get_open_orders(self, symbol: str):
         req = GetOpenOrdersReqBuilder().set_symbol(symbol).build()
