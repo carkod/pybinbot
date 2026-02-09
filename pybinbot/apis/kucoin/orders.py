@@ -24,6 +24,9 @@ from kucoin_universal_sdk.generate.spot.order.model_get_order_by_order_id_req im
 from kucoin_universal_sdk.generate.spot.order.model_get_open_orders_req import (
     GetOpenOrdersReqBuilder,
 )
+from kucoin_universal_sdk.generate.spot.order.model_get_trade_history_req import (
+    GetTradeHistoryReqBuilder,
+)
 from kucoin_universal_sdk.generate.margin.order.model_add_order_req import (
     AddOrderReq,
     AddOrderReqBuilder,
@@ -57,7 +60,7 @@ from kucoin_universal_sdk.generate.spot.market import (
     GetPartOrderBookReqBuilder,
     GetFullOrderBookReqBuilder,
 )
-from pybinbot import MarketType
+from kucoin_universal_sdk.model.common import RestError
 
 
 class KucoinOrders(KucoinMarket):
@@ -81,31 +84,6 @@ class KucoinOrders(KucoinMarket):
         self.transfer_api = (
             self.client.rest_service().get_account_service().get_transfer_api()
         )
-
-    def get_order_with_retry(
-        self,
-        symbol: str,
-        order_id: str,
-        market_type: MarketType = MarketType.SPOT,
-    ) -> GetOrderByOrderIdResp | None:
-        """
-        Get order by ID with exponential backoff retry.
-        KuCoin's order data is not immediately available after placement.
-
-        We only consider the order "ready" when:
-        - it is no longer active (order.active is False), and
-        - id, price and size are all populated.
-
-        """
-        get_order_by_order_id = self.get_order_by_order_id
-        if market_type == MarketType.MARGIN:
-            get_order_by_order_id = self.get_margin_order_by_order_id
-
-        order = get_order_by_order_id(symbol=symbol, order_id=order_id)
-        if order and float(order.deal_size) > 0:
-            return order
-
-        return None
 
     def get_part_order_book(self, symbol: str, size: int):
         request = (
@@ -288,9 +266,7 @@ class KucoinOrders(KucoinMarket):
         req = builder.build()
         order_response = self.order_api.add_order_sync(req)
         # order_response returns incomplete info, retry with backoff
-        order = self.get_order_with_retry(
-            symbol=symbol, order_id=order_response.order_id
-        )
+        order = self.get_order(symbol=symbol, order_id=order_response.order_id)
         if order is None:
             # Filler response
             order = GetOrderByOrderIdResp(
@@ -350,9 +326,7 @@ class KucoinOrders(KucoinMarket):
         order_response = self.order_api.add_order_sync(req)
 
         # Ensure we have the complete order details
-        order = self.get_order_with_retry(
-            symbol=symbol, order_id=order_response.order_id
-        )
+        order = self.get_order(order_id=order_response.order_id, symbol=symbol)
         if order is None:
             # Filler Models
             order = GetOrderByOrderIdResp(
@@ -396,25 +370,71 @@ class KucoinOrders(KucoinMarket):
         req = BatchAddOrdersSyncReqBuilder().set_order_list(order_list).build()
         return self.order_api.batch_add_orders_sync(req)
 
-    def cancel_order_by_order_id_sync(self, symbol: str, order_id: str):
-        req = (
-            CancelOrderByOrderIdSyncReqBuilder()
-            .set_symbol(symbol)
-            .set_order_id(order_id)
-            .build()
-        )
+    def cancel_order_by_order_id_sync(self, order_id: str):
+        req = CancelOrderByOrderIdSyncReqBuilder().set_order_id(order_id).build()
         return self.order_api.cancel_order_by_order_id_sync(req)
 
-    def get_order_by_order_id(
-        self, symbol: str, order_id: str
+    def get_order(
+        self, order_id: str, symbol: str | None = None
     ) -> GetOrderByOrderIdResp:
-        req = (
-            GetOrderByOrderIdReqBuilder()
-            .set_symbol(symbol)
-            .set_order_id(order_id)
-            .build()
-        )
-        return self.order_api.get_order_by_order_id(req)
+        """
+        Get order details
+        Because of KuCoin's API design, we may not get all order details
+        immediately after placing an order.
+        Market orders can only be retrieved with trade history,
+        so we need symbol
+        """
+        req = GetOrderByOrderIdReqBuilder().set_order_id(order_id).build()
+        try:
+            return self.order_api.get_order_by_order_id(req)
+        except RestError as e:
+            # If the high-frequency order lookup fails (e.g. 400 Bad Request),
+            # and we know the symbol, fall back to trade history
+            # to reconstruct basic order details.
+            if "Invalid status code: 400" not in e.msg or symbol is None:
+                raise
+
+            trade_req = (
+                GetTradeHistoryReqBuilder()
+                .set_symbol(symbol)
+                .set_order_id(order_id)
+                .build()
+            )
+            trade_history = self.order_api.get_trade_history(trade_req)
+
+            if not trade_history or not trade_history.items:
+                # No trade data for this order either, re-raise original error
+                raise
+
+            first_fill = trade_history.items[0]
+
+            total_funds = 0.0
+            total_size = 0.0
+            for item in trade_history.items:
+                if item.funds is not None:
+                    total_funds += float(item.funds)
+                if item.size is not None:
+                    total_size += float(item.size)
+
+            avg_price = 0.0
+            if total_size > 0:
+                avg_price = total_funds / total_size if total_funds > 0 else 0.0
+            elif first_fill.price is not None:
+                avg_price = float(first_fill.price)
+
+            return GetOrderByOrderIdResp(
+                id=first_fill.order_id or order_id,
+                symbol=first_fill.symbol,
+                price=str(avg_price),
+                size=str(total_size) if total_size > 0 else first_fill.size,
+                funds=str(total_funds) if total_funds > 0 else first_fill.funds,
+                deal_size=str(total_size) if total_size > 0 else first_fill.size,
+                deal_funds=str(total_funds) if total_funds > 0 else first_fill.funds,
+                fee=first_fill.fee,
+                fee_currency=first_fill.fee_currency,
+                created_at=first_fill.created_at,
+                active=False,
+            )
 
     def get_open_orders(self, symbol: str):
         req = GetOpenOrdersReqBuilder().set_symbol(symbol).build()
@@ -453,10 +473,9 @@ class KucoinOrders(KucoinMarket):
         req = builder.build()
         order_response = self.margin_order_api.add_order(req)
         # order_response returns incomplete info, retry with backoff
-        order = self.get_order_with_retry(
-            symbol=symbol,
+        order = self.get_margin_order(
             order_id=order_response.order_id,
-            market_type=MarketType.MARGIN,
+            symbol=symbol,
         )
         return order
 
@@ -492,33 +511,67 @@ class KucoinOrders(KucoinMarket):
         req = builder.build()
         order_response = self.margin_order_api.add_order(req)
         # order_response returns incomplete info, retry with backoff
-        order = self.get_order_with_retry(
-            symbol=symbol,
+        order = self.get_order(
             order_id=order_response.order_id,
-            market_type=MarketType.MARGIN,
         )
         return order
 
-    def cancel_margin_order_by_order_id(self, symbol: str, order_id: str):
+    def cancel_margin_order_by_order_id(self, order_id: str):
         # Margin API uses cancel by order id req builder from margin.order
-        req_cancel = (
-            CancelOrderByOrderIdReqBuilder()
-            .set_symbol(symbol)
-            .set_order_id(order_id)
-            .build()
-        )
+        req_cancel = CancelOrderByOrderIdReqBuilder().set_order_id(order_id).build()
         return self.margin_order_api.cancel_order_by_order_id(req_cancel)
 
-    def get_margin_order_by_order_id(
-        self, symbol: str, order_id: str
-    ) -> GetOrderByOrderIdResp:
-        req = (
-            GetOrderByOrderIdReqBuilder()
-            .set_symbol(symbol)
-            .set_order_id(order_id)
-            .build()
-        )
-        return self.margin_order_api.get_order_by_order_id(req)
+    def get_margin_order(self, order_id: str, symbol: str) -> GetOrderByOrderIdResp:
+        req = GetOrderByOrderIdReqBuilder().set_order_id(order_id).build()
+        try:
+            return self.margin_order_api.get_order_by_order_id(req)
+        except RestError as e:
+            # Mirror spot logic: if margin order lookup by ID fails with 400,
+            # fall back to trade history for that symbol + orderId.
+            if "Invalid status code: 400" not in e.msg:
+                raise
+
+            trade_req = (
+                GetTradeHistoryReqBuilder()
+                .set_symbol(symbol)
+                .set_order_id(order_id)
+                .build()
+            )
+            trade_history = self.order_api.get_trade_history(trade_req)
+
+            if not trade_history or not trade_history.items:
+                # No trade data for this order either, re-raise original error
+                raise
+
+            first_fill = trade_history.items[0]
+
+            total_funds = 0.0
+            total_size = 0.0
+            for item in trade_history.items:
+                if item.funds is not None:
+                    total_funds += float(item.funds)
+                if item.size is not None:
+                    total_size += float(item.size)
+
+            avg_price = 0.0
+            if total_size > 0:
+                avg_price = total_funds / total_size if total_funds > 0 else 0.0
+            elif first_fill.price is not None:
+                avg_price = float(first_fill.price)
+
+            return GetOrderByOrderIdResp(
+                id=first_fill.order_id or order_id,
+                symbol=first_fill.symbol,
+                price=str(avg_price),
+                size=str(total_size) if total_size > 0 else first_fill.size,
+                funds=str(total_funds) if total_funds > 0 else first_fill.funds,
+                deal_size=str(total_size) if total_size > 0 else first_fill.size,
+                deal_funds=str(total_funds) if total_funds > 0 else first_fill.funds,
+                fee=first_fill.fee,
+                fee_currency=first_fill.fee_currency,
+                created_at=first_fill.created_at,
+                active=False,
+            )
 
     def get_margin_open_orders(self, symbol: str):
         req = GetOpenOrdersReqBuilder().set_symbol(symbol).build()
