@@ -82,6 +82,13 @@ class OrderType(str, Enum):
     take_profit_limit = "TAKE_PROFIT_LIMIT"
     limit_maker = "LIMIT_MAKER"
 
+    def to_kucoin_value(self):
+        """
+        Convert order type to Kucoin format.
+        """
+        mapping = {"LIMIT": "limit", "MARKET": "market"}
+        return mapping.get(self.value, self.value.lower())
+
 
 class TimeInForce(str, Enum):
     gtc = "GTC"
