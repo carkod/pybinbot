@@ -24,6 +24,7 @@ from pybinbot.shared.timestamps import (
     ts_to_day,
     ts_to_humandate,
 )
+from pybinbot.shared.utils import convert_from_kucoin_symbol, convert_to_kucoin_symbol
 from pybinbot.shared.enums import (
     AutotradeSettingsDocument,
     BinanceKlineIntervals,
@@ -91,7 +92,6 @@ from pybinbot.streaming.binance.async_socket_client import (
 from pybinbot.streaming.binance.socket_client import SpotWebsocketStreamClient
 from pybinbot.streaming.kucoin.kucoin_async_client import AsyncKucoinWebsocketClient
 
-
 from . import models, shared, apis
 
 configure_logging()
@@ -116,6 +116,8 @@ __all__ = [
     "cache",
     "handle_binance_errors",
     "aio_response_handler",
+    "convert_to_kucoin_symbol",
+    "convert_from_kucoin_symbol",
     # maths helpers
     "supress_trailling",
     "round_numbers",
