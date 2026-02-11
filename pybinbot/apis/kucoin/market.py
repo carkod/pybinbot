@@ -1,8 +1,10 @@
 import logging
-from pybinbot.apis.kucoin.rest import KucoinRest
-from pybinbot import KucoinKlineIntervals
 from datetime import datetime
+
 from kucoin_universal_sdk.generate.spot.market import GetKlinesReqBuilder
+
+from pybinbot.apis.kucoin.rest import KucoinRest
+from pybinbot.shared.enums import KucoinKlineIntervals
 
 
 class KucoinMarket(KucoinRest):
