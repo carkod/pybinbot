@@ -1,9 +1,7 @@
+import pytest
 from types import SimpleNamespace
 from unittest.mock import MagicMock
-
-import pytest
-
-from pybinbot.apis.kucoin.orders import KucoinOrders
+from pybinbot import KucoinOrders
 
 
 def mock_order_book(bids, asks):
