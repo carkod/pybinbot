@@ -262,6 +262,23 @@ class KucoinKlineIntervals(str, Enum):
             )
         return interval_map[interval_str]
 
+    def to_minutes(self) -> int:
+        """
+        Convert enum value to total minutes.
+        """
+        value = self.value
+
+        if "min" in value:
+            return int(value.replace("min", ""))
+        if "hour" in value:
+            return int(value.replace("hour", "")) * 60
+        if "day" in value:
+            return int(value.replace("day", "")) * 60 * 24
+        if "week" in value:
+            return int(value.replace("week", "")) * 60 * 24 * 7
+
+        raise ValueError(f"Unsupported interval format: {value}")
+
     def get_ms(self) -> int:
         """
         Instance method to get interval duration in milliseconds

@@ -65,55 +65,107 @@ class HeikinAshi:
     def pre_process(self, exchange: ExchangeId, candles: list):
         df_1h = DataFrame()
         df_4h = DataFrame()
+
         if exchange == ExchangeId.BINANCE:
-            # Binance API may return extra columns; only take the expected ones
             df_raw = DataFrame(candles)
             df = df_raw.iloc[:, : len(self.binance_cols)]
             df.columns = self.binance_cols
-            columns = self.binance_cols
+
         else:
-            df = DataFrame(candles, columns=self.kucoin_cols)
-            columns = self.kucoin_cols
+            # KUCOIN (Spot OR Futures)
+            df_raw = DataFrame(candles)
 
-        # Ensure the dataframe has exactly the expected columns
-        if len(df.columns) != len(columns):
-            raise ValueError(
-                f"Column mismatch: {len(df.columns)} vs expected {len(columns)}"
-            )
+            if df_raw.shape[1] == 7:
+                # Could be Spot or Futures → need to normalize order
 
-        # Convert only numeric columns safely
+                # Detect Futures vs Spot by OHLC ordering
+                # Futures: open, high, low, close
+                # Spot:    open, close, high, low
+
+                # We detect by checking column 2 vs column 3 relationships
+                # If col2 >= col3 consistently → likely high/low → Futures
+
+                sample = df_raw.iloc[0]
+
+                col2 = float(sample[2])
+                col3 = float(sample[3])
+
+                # Futures pattern: open, high, low, close
+                is_futures = col2 >= col3  # high >= low always true in futures format
+
+                if is_futures:
+                    # Futures format
+                    df_raw.columns = [
+                        "open_time",
+                        "open",
+                        "high",
+                        "low",
+                        "close",
+                        "volume",
+                        "quote_asset_volume",
+                    ]
+                else:
+                    # Spot format
+                    df_raw.columns = [
+                        "open_time",
+                        "open",
+                        "close",
+                        "high",
+                        "low",
+                        "volume",
+                        "quote_asset_volume",
+                    ]
+
+                    # Reorder to canonical OHLC
+                    df_raw = df_raw[
+                        [
+                            "open_time",
+                            "open",
+                            "high",
+                            "low",
+                            "close",
+                            "volume",
+                            "quote_asset_volume",
+                        ]
+                    ]
+
+                # KuCoin does not provide close_time → derive it
+                df_raw["close_time"] = df_raw["open_time"]
+
+            else:
+                raise ValueError(
+                    f"Unexpected KuCoin kline column count: {df_raw.shape[1]}"
+                )
+
+            df = df_raw
+
+        # Convert numeric safely
         numeric_cols = ["open", "high", "low", "close", "volume"]
         for col in numeric_cols:
             df[col] = to_numeric(df[col], errors="coerce")
 
         df = self.get_heikin_ashi(df)
 
-        # Ensure close_time is datetime and set as index for proper resampling
         df["timestamp"] = to_datetime(df["close_time"], unit="ms")
         df.set_index("timestamp", inplace=True)
         df = df.sort_index()
         df = df[~df.index.duplicated(keep="last")]
 
-        # Create aggregation dictionary without close_time and open_time since they're now index-based
         resample_aggregation = {
             "open": "first",
             "close": "last",
             "high": "max",
             "low": "min",
-            "volume": "sum",  # Add volume if it exists in your data
+            "volume": "sum",
             "close_time": "first",
             "open_time": "first",
         }
 
-        # Resample to 4 hour candles for TWAP (align to calendar hours like MongoDB)
         df_4h = df.resample("4h").agg(cast(dict, resample_aggregation))
-        # Add open_time and close_time back as columns for 4h data
         df_4h["open_time"] = df_4h.index
         df_4h["close_time"] = df_4h.index
 
-        # Resample to 1 hour candles for Supertrend (align to calendar hours like MongoDB)
         df_1h = df.resample("1h").agg(cast(dict, resample_aggregation))
-        # Add open_time and close_time back as columns for 1h data
         df_1h["open_time"] = df_1h.index
         df_1h["close_time"] = df_1h.index
 
