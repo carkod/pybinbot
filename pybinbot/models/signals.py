@@ -6,7 +6,9 @@ from pybinbot.shared.enums import MarketType, Strategy
 
 
 class HABollinguerSpread(BaseModel):
-    """Pydantic model for the Bollinguer spread."""
+    """
+    Pydantic model for the Bollinguer spread.
+    """
 
     bb_high: float
     bb_mid: float
@@ -14,7 +16,9 @@ class HABollinguerSpread(BaseModel):
 
 
 class SignalsConsumer(BaseModel):
-    """Pydantic model for the signals consumer."""
+    """
+    Pydantic model for the signals consumer.
+    """
 
     type: str = Field(default="signal")
     date: str = Field(
