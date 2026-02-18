@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from pybinbot.shared.enums import Strategy
+from pybinbot.shared.enums import MarketType, Strategy
 
 
 class HABollinguerSpread(BaseModel):
@@ -30,6 +30,9 @@ class SignalsConsumer(BaseModel):
     bot_strategy: Strategy = Field(default=Strategy.long)
     bb_spreads: HABollinguerSpread | None = Field(default=None)
     autotrade: bool = Field(default=True, description="If it is in testing mode, False")
+    market_type: MarketType = Field(
+        default=MarketType.SPOT, description="spot or futures"
+    )
 
     model_config = ConfigDict(
         extra="allow",
