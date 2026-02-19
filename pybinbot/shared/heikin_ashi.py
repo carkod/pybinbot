@@ -62,6 +62,26 @@ class HeikinAshi:
 
     REQUIRED_COLUMNS = kucoin_cols
 
+    @staticmethod
+    def normalize_timestamps(df: DataFrame, time_cols: list[str]) -> DataFrame:
+        """
+        Normalize timestamp columns to milliseconds.
+        Detects if timestamps are in microseconds (16 digits) and converts to ms (13 digits).
+        """
+        for col in time_cols:
+            if col in df.columns:
+                # Convert to numeric first
+                df[col] = to_numeric(df[col], errors="coerce")
+
+                # Check if any timestamp is > 13 digits (likely microseconds)
+                sample = df[col].dropna().iloc[0] if not df[col].dropna().empty else 0
+
+                # If timestamp is >= 10^15 (16+ digits), it's likely in microseconds
+                if sample >= 1e15:
+                    df[col] = df[col] / 1000  # Convert microseconds to milliseconds
+
+        return df
+
     def pre_process(self, exchange: ExchangeId, candles: list):
         df_1h = DataFrame()
         df_4h = DataFrame()
@@ -138,6 +158,9 @@ class HeikinAshi:
                 )
 
             df = df_raw
+
+        # Normalize timestamps to milliseconds (detect and convert microseconds)
+        df = self.normalize_timestamps(df, ["open_time", "close_time"])
 
         # Convert numeric safely
         numeric_cols = ["open", "high", "low", "close", "volume"]
