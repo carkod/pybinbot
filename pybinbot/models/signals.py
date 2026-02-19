@@ -104,3 +104,4 @@ class KlineProduceModel(BaseModel):
     high_price: str
     low_price: str
     volume: float
+    market_type: MarketType | None = Field(default=None)

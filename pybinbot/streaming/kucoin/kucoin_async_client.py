@@ -110,6 +110,7 @@ class AsyncKucoinWebsocketClient:
                 self.process_kline_stream(
                     symbol=event.symbol,
                     candles=event.candles,
+                    market_type=MarketType.FUTURES,
                 )
         except Exception as e:
             logger.error(f"Futures kline error: {e}", exc_info=True)
@@ -117,7 +118,9 @@ class AsyncKucoinWebsocketClient:
     # -------------------------------------------------------
     # Shared Kline Processing
     # -------------------------------------------------------
-    def process_kline_stream(self, symbol: str, candles: list[str]) -> None:
+    def process_kline_stream(
+        self, symbol: str, candles: list[str], market_type: MarketType | None = None
+    ) -> None:
         if not candles or len(candles) < 6 or float(candles[5]) == 0:
             return
 
@@ -139,6 +142,7 @@ class AsyncKucoinWebsocketClient:
             high_price=str(candles[3]),
             low_price=str(candles[4]),
             volume=str(candles[5]),
+            market_type=market_type.value if market_type else self.market_type.value,
         )
 
         try:
