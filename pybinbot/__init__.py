@@ -80,6 +80,7 @@ from pybinbot.apis.kucoin.exceptions import KucoinErrors
 from pybinbot.apis.kucoin.rest import KucoinRest
 from pybinbot.apis.kucoin.orders import KucoinOrders
 from pybinbot.apis.kucoin.market import KucoinMarket
+from pybinbot.apis.kucoin.futures import KucoinFutures
 from pybinbot.apis.binance.exceptions import (
     BinanceErrors,
     InvalidSymbol,
@@ -168,6 +169,7 @@ __all__ = [
     "KucoinRest",
     "KucoinOrders",
     "KucoinMarket",
+    "KucoinFutures",
     # exceptions
     "BinanceErrors",
     "InvalidSymbol",
