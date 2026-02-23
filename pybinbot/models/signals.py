@@ -2,11 +2,13 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from pybinbot.shared.enums import Strategy
+from pybinbot.shared.enums import MarketType, Strategy
 
 
 class HABollinguerSpread(BaseModel):
-    """Pydantic model for the Bollinguer spread."""
+    """
+    Pydantic model for the Bollinguer spread.
+    """
 
     bb_high: float
     bb_mid: float
@@ -14,7 +16,9 @@ class HABollinguerSpread(BaseModel):
 
 
 class SignalsConsumer(BaseModel):
-    """Pydantic model for the signals consumer."""
+    """
+    Pydantic model for the signals consumer.
+    """
 
     type: str = Field(default="signal")
     date: str = Field(
@@ -30,6 +34,9 @@ class SignalsConsumer(BaseModel):
     bot_strategy: Strategy = Field(default=Strategy.long)
     bb_spreads: HABollinguerSpread | None = Field(default=None)
     autotrade: bool = Field(default=True, description="If it is in testing mode, False")
+    market_type: MarketType = Field(
+        default=MarketType.SPOT, description="spot or futures"
+    )
 
     model_config = ConfigDict(
         extra="allow",
@@ -97,3 +104,4 @@ class KlineProduceModel(BaseModel):
     high_price: str
     low_price: str
     volume: float
+    market_type: MarketType | None = Field(default=None)
