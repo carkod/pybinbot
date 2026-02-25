@@ -58,6 +58,7 @@ from kucoin_universal_sdk.generate.futures.positions.model_get_isolated_margin_r
 from kucoin_universal_sdk.generate.futures.order.model_get_stop_order_list_resp import (
     GetStopOrderListItems,
 )
+from kucoin_universal_sdk.generate.futures.order import GetStopOrderListReqBuilder
 
 
 class KucoinFutures(KucoinRest):
@@ -263,7 +264,7 @@ class KucoinFutures(KucoinRest):
         """
         Get all open stop loss orders for a symbol.
         """
-        req = GetPartOrderBookReqBuilder().set_symbol(symbol).build()
+        req = GetStopOrderListReqBuilder().set_symbol(symbol).build()
         book = self.futures_order_api.get_stop_order_list(req)
 
         return book.items
