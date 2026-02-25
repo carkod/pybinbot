@@ -1,3 +1,4 @@
+from typing import Any
 from aiohttp import ClientSession
 from pybinbot import ExchangeId, Status
 from requests import Session
@@ -65,12 +66,14 @@ class BinbotApi:
         self.bb_test_autotrade_url = f"{bb_base_url}/autotrade-settings/paper-trading"
         self.bb_test_active_pairs = f"{bb_base_url}/paper-trading/active-pairs"
 
-    def request(self, url, method="GET", session: Session = Session(), **kwargs):
+    def request(
+        self, url, method="GET", session: Session = Session(), **kwargs
+    ) -> dict[Any, Any]:
         res = session.request(url=url, method=method, **kwargs)
         data = handle_binance_errors(res)
         return data
 
-    async def fetch(self, url, method="GET", **kwargs):
+    async def fetch(self, url, method="GET", **kwargs) -> dict[Any, Any]:
         """
         Async HTTP client/server for asyncio
         that replaces requests library
@@ -139,7 +142,7 @@ class BinbotApi:
         )
         return data["data"]
 
-    def submit_bot_event_logs(self, bot_id, message):
+    def submit_bot_event_logs(self, bot_id: str, message: str) -> dict:
         data = self.request(
             url=f"{self.bb_submit_errors}/{bot_id}",
             method="POST",
@@ -147,7 +150,7 @@ class BinbotApi:
         )
         return data
 
-    def submit_paper_trading_event_logs(self, bot_id, message):
+    def submit_paper_trading_event_logs(self, bot_id: str, message: str) -> dict:
         data = self.request(
             url=f"{self.bb_pt_submit_errors_url}/{bot_id}",
             method="POST",
@@ -155,12 +158,12 @@ class BinbotApi:
         )
         return data
 
-    def add_to_blacklist(self, symbol, reason=None):
+    def add_to_blacklist(self, symbol: str, reason: str | None = None) -> dict:
         payload = {"symbol": symbol, "reason": reason}
         data = self.request(url=self.bb_blacklist_url, method="POST", json=payload)
         return data
 
-    def clean_margin_short(self, pair):
+    def clean_margin_short(self, pair: str) -> dict:
         """
         Liquidate and disable margin_short trades
         """
@@ -220,31 +223,31 @@ class BinbotApi:
             all_balances = self.get_balances()
             return float(all_balances["data"]["fiat_available"])
 
-    def create_bot(self, data):
-        data = self.request(url=self.bb_bot_url, method="POST", data=data)
-        return data
+    def create_bot(self, data: dict) -> dict[Any, Any]:
+        response = self.request(url=self.bb_bot_url, method="POST", json=data)
+        return response
 
-    def activate_bot(self, bot_id):
-        data = self.request(url=f"{self.bb_activate_bot_url}/{bot_id}")
-        return data
+    def activate_bot(self, bot_id: str) -> dict[Any, Any]:
+        response = self.request(url=f"{self.bb_activate_bot_url}/{bot_id}")
+        return response
 
-    def create_paper_bot(self, data):
-        data = self.request(url=self.bb_test_bot_url, method="POST", data=data)
-        return data
+    def create_paper_bot(self, data: dict) -> dict[Any, Any]:
+        response = self.request(url=self.bb_test_bot_url, method="POST", json=data)
+        return response
 
-    def activate_paper_bot(self, bot_id):
-        data = self.request(url=f"{self.bb_activate_test_bot_url}/{bot_id}")
-        return data
+    def activate_paper_bot(self, bot_id: str) -> dict[Any, Any]:
+        response = self.request(url=f"{self.bb_activate_test_bot_url}/{bot_id}")
+        return response
 
-    def delete_paper_bot(self, bot_id):
+    def delete_paper_bot(self, bot_id: str | list[str]) -> dict[Any, Any]:
         bot_ids = []
         if isinstance(bot_id, str):
             bot_ids.append(bot_id)
 
-        data = self.request(
+        response = self.request(
             url=f"{self.bb_test_bot_url}", method="DELETE", data={"id": bot_ids}
         )
-        return data
+        return response
 
     def get_active_pairs(self, collection_name="bots"):
         """

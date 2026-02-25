@@ -1,5 +1,6 @@
 import logging
 from time import sleep
+from typing import Any
 from requests import Response, HTTPError
 from aiohttp import ClientResponse
 from pybinbot.apis.binbot.exceptions import (
@@ -18,7 +19,7 @@ async def aio_response_handler(response: ClientResponse):
     return content
 
 
-def handle_binance_errors(response: Response) -> dict:
+def handle_binance_errors(response: Response) -> dict[Any, Any]:
     """
     Handles:
     - HTTP codes, not authorized, rate limits...
