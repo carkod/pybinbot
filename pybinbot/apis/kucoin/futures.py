@@ -59,8 +59,13 @@ from kucoin_universal_sdk.generate.futures.order.model_get_stop_order_list_resp 
     GetStopOrderListItems,
 )
 from kucoin_universal_sdk.generate.futures.order import GetStopOrderListReqBuilder
-from kucoin_universal_sdk.generate.futures.order.model_batch_cancel_orders_req import BatchCancelOrdersReqBuilder
-from kucoin_universal_sdk.generate.futures.order.model_batch_cancel_orders_resp import BatchCancelOrdersResp
+from kucoin_universal_sdk.generate.futures.order.model_batch_cancel_orders_req import (
+    BatchCancelOrdersReqBuilder,
+)
+from kucoin_universal_sdk.generate.futures.order.model_batch_cancel_orders_resp import (
+    BatchCancelOrdersResp,
+)
+
 
 class KucoinFutures(KucoinRest):
     """
@@ -347,27 +352,20 @@ class KucoinFutures(KucoinRest):
 
         # --- Interval ---
         interval_enum = KucoinKlineIntervals(interval)
-        granularity = interval_enum.to_minutes()  # e.g., 15 for 15min
-        interval_ms = granularity * 60 * 1000  # 15*60*1000 = 900_000 ms
+        granularity = interval_enum.to_minutes()  # e.g., 15
+        interval_ms = granularity * 60 * 1000
 
-        # --- UTC now in ms ---
+        # --- Current time ---
         now_ms = int(time() * 1000)
 
-        # --- Determine start / end times ---
-        if end_time is None:
-            # Align end_time to the last fully closed candle
-            end_time = now_ms - (now_ms % interval_ms)
+        builder = GetKlinesReqBuilder().set_symbol(symbol).set_granularity(granularity)
 
-        if start_time is None:
-            start_time = end_time - (limit * interval_ms)
+        if start_time:
+            builder.set_from_(int(start_time))
 
-        builder = (
-            GetKlinesReqBuilder()
-            .set_symbol(symbol)
-            .set_granularity(granularity)
-            .set_from_(int(start_time))
-            .set_to(int(end_time))
-        )
+        if end_time:
+            builder.set_to(int(end_time))
+
         request = builder.build()
         response = self.futures_market_api.get_klines(request)
 
@@ -395,7 +393,10 @@ class KucoinFutures(KucoinRest):
                 ]
             )
 
-        return klines
+        # Safety: ensure sorted
+        klines.sort(key=lambda x: x[0])
+
+        return klines[-limit:]
 
     def set_futures_leverage(
         self, symbol: str, leverage: int
