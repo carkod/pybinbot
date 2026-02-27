@@ -59,7 +59,8 @@ from kucoin_universal_sdk.generate.futures.order.model_get_stop_order_list_resp 
     GetStopOrderListItems,
 )
 from kucoin_universal_sdk.generate.futures.order import GetStopOrderListReqBuilder
-
+from kucoin_universal_sdk.generate.futures.order.model_batch_cancel_orders_req import BatchCancelOrdersReqBuilder
+from kucoin_universal_sdk.generate.futures.order.model_batch_cancel_orders_resp import BatchCancelOrdersResp
 
 class KucoinFutures(KucoinRest):
     """
@@ -549,3 +550,10 @@ class KucoinFutures(KucoinRest):
         # Fallback to last tier
         last_tier = tiers_sorted[-1]
         return int(Decimal("1") / Decimal(str(last_tier.initial_margin)))
+
+    def batch_cancel_stop_loss_orders(self, so_ids: list[str]) -> BatchCancelOrdersResp:
+        """
+        Cancel multiple stop loss orders by their IDs.
+        """
+        req = BatchCancelOrdersReqBuilder().set_order_ids_list(so_ids).build()
+        return self.futures_order_api.batch_cancel_orders(req)
