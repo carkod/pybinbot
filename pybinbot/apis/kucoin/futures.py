@@ -7,6 +7,9 @@ from pybinbot.models.order import OrderBase
 from kucoin_universal_sdk.generate.futures.order import (
     AddOrderReqBuilder,
     GetOrderByOrderIdReqBuilder,
+    GetTradeHistoryReqBuilder,
+    GetTradeHistoryResp,
+    GetTradeHistoryReq,
 )
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
 from kucoin_universal_sdk.generate.futures.order.model_add_order_resp import (
@@ -555,3 +558,41 @@ class KucoinFutures(KucoinRest):
         """
         req = BatchCancelOrdersReqBuilder().set_order_ids_list(so_ids).build()
         return self.futures_order_api.batch_cancel_orders(req)
+
+    def get_fills(
+        self,
+        order_id: str | None = None,
+        symbol: str | None = None,
+        side: GetTradeHistoryReq.SideEnum | None = None,
+        order_type: GetTradeHistoryReq.TypeEnum | None = None,
+        trade_types: str | None = None,
+        start_at: int | None = None,
+        end_at: int | None = None,
+        current_page: int | None = None,
+        page_size: int | None = None,
+    ) -> GetTradeHistoryResp:
+        """Fetch trade fills via GET /api/v1/fills."""
+
+        builder = GetTradeHistoryReqBuilder()
+
+        if order_id is not None:
+            builder = builder.set_order_id(order_id)
+        if symbol is not None:
+            builder = builder.set_symbol(symbol)
+        if side is not None:
+            builder = builder.set_side(side)
+        if order_type is not None:
+            builder = builder.set_type(order_type)
+        if trade_types is not None:
+            builder = builder.set_trade_types(trade_types)
+        if start_at is not None:
+            builder = builder.set_start_at(start_at)
+        if end_at is not None:
+            builder = builder.set_end_at(end_at)
+        if current_page is not None:
+            builder = builder.set_current_page(current_page)
+        if page_size is not None:
+            builder = builder.set_page_size(page_size)
+
+        req = builder.build()
+        return self.futures_order_api.get_trade_history(req)
