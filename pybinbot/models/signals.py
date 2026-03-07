@@ -2,7 +2,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pybinbot.shared.enums import MarketType, Strategy
 from pandera.typing import Series
-from pandera import DataFrameModel
+from pandera.pandas import DataFrameModel
 
 
 class HABollinguerSpread(BaseModel):
@@ -113,3 +113,6 @@ class KlineSchema(DataFrameModel):
     low: Series[float]
     close: Series[float]
     volume: Series[float]
+
+    class Config:
+        strict = False
