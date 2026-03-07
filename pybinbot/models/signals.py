@@ -113,3 +113,6 @@ class KlineSchema(DataFrameModel):
     low: Series[float]
     close: Series[float]
     volume: Series[float]
+
+    class Config:
+        strict = False
