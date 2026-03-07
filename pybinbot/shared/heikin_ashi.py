@@ -169,7 +169,7 @@ class HeikinAshi:
         for col in numeric_cols:
             df[col] = to_numeric(df[col], errors="coerce")
 
-        df = self.get_heikin_ashi(df)
+        df: TypedDataFrame[KlineSchema] = self.get_heikin_ashi(df)
 
         df["timestamp"] = to_datetime(df["close_time"], unit="ms")
         df.set_index("timestamp", inplace=True)
@@ -198,7 +198,7 @@ class HeikinAshi:
         return df, df_1h, df_4h
 
     @staticmethod
-    def post_process(df: DataFrame) -> DataFrame:
+    def post_process(df: TypedDataFrame[KlineSchema]) -> TypedDataFrame[KlineSchema]:
         """
         Post-process the DataFrame by filling missing values and
         converting data types as needed.
@@ -207,7 +207,7 @@ class HeikinAshi:
         df.reset_index(drop=True, inplace=True)
         return df
 
-    def ensure_ohlc(self, df: DataFrame) -> DataFrame:
+    def ensure_ohlc(self, df: TypedDataFrame[KlineSchema]) -> TypedDataFrame[KlineSchema]:
         """Validate & coerce a DataFrame into an DataFrame.
 
         Steps:
