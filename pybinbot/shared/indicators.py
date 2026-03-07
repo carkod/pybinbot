@@ -1,6 +1,7 @@
 from typing import cast
-from pandas import DataFrame, Series, Timedelta, concat, to_datetime
-
+from pandas import Series, Timedelta, concat, to_datetime
+from pandera.typing import DataFrame as TypedDataFrame
+from pybinbot.models.signals import KlineSchema
 
 class Indicators:
     """
@@ -10,7 +11,7 @@ class Indicators:
     """
 
     @staticmethod
-    def moving_averages(df: DataFrame, period=7) -> DataFrame:
+    def moving_averages(df: TypedDataFrame[KlineSchema], period=7) -> TypedDataFrame[KlineSchema]:
         """
         Calculate moving averages for 7, 25, 100 days
         this also takes care of Bollinguer bands
@@ -19,7 +20,7 @@ class Indicators:
         return df
 
     @staticmethod
-    def macd(df: DataFrame) -> DataFrame:
+    def macd(df: TypedDataFrame[KlineSchema]) -> TypedDataFrame[KlineSchema]:
         """
         Moving Average Convergence Divergence (MACD) indicator
         https://www.alpharithms.com/calculate-macd-python-272222/
@@ -41,8 +42,8 @@ class Indicators:
 
     @staticmethod
     def ema(
-        df: DataFrame, column: str = "close", span: int = 9, out_col: str | None = None
-    ) -> DataFrame:
+        df: TypedDataFrame[KlineSchema], column: str = "close", span: int = 9, out_col: str | None = None
+    ) -> TypedDataFrame[KlineSchema]:
         """Exponential moving average for a given column.
 
         Adds a new column with the EMA values and returns the DataFrame.
@@ -53,8 +54,8 @@ class Indicators:
 
     @staticmethod
     def trend_ema(
-        df: DataFrame, column: str = "close", fast_span: int = 9, slow_span: int = 21
-    ) -> DataFrame:
+        df: TypedDataFrame[KlineSchema], column: str = "close", fast_span: int = 9, slow_span: int = 21
+    ) -> TypedDataFrame[KlineSchema]:
         """Compute fast and slow EMAs for trend analysis.
 
         Adds 'ema_fast' and 'ema_slow' columns and returns the DataFrame.
@@ -64,7 +65,7 @@ class Indicators:
         return df
 
     @staticmethod
-    def rsi(df: DataFrame, window: int = 14) -> DataFrame:
+    def rsi(df: TypedDataFrame[KlineSchema], window: int = 14) -> TypedDataFrame[KlineSchema]:
         """
         Relative Strength Index (RSI) indicator
         https://www.qmr.ai/relative-strength-index-rsi-in-python/
@@ -88,7 +89,7 @@ class Indicators:
         return df
 
     @staticmethod
-    def standard_rsi(df: DataFrame, window: int = 14) -> DataFrame:
+    def standard_rsi(df: TypedDataFrame[KlineSchema], window: int = 14) -> TypedDataFrame[KlineSchema]:
         delta = df["close"].diff()
         gain = delta.where(delta > 0, 0).rolling(window=window, min_periods=1).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=window, min_periods=1).mean()
@@ -97,7 +98,7 @@ class Indicators:
         return df
 
     @staticmethod
-    def ma_spreads(df: DataFrame) -> DataFrame:
+    def ma_spreads(df: TypedDataFrame[KlineSchema]) -> TypedDataFrame[KlineSchema]:
         """
         Calculates spread based on bollinger bands,
         for later use in take profit and stop loss
@@ -116,7 +117,7 @@ class Indicators:
         return df
 
     @staticmethod
-    def bollinguer_spreads(df: DataFrame, window=20, num_std=2) -> DataFrame:
+    def bollinguer_spreads(df: TypedDataFrame[KlineSchema], window=20, num_std=2) -> TypedDataFrame[KlineSchema]:
         """
         Calculates Bollinguer bands
 
@@ -136,7 +137,7 @@ class Indicators:
         return df
 
     @staticmethod
-    def log_volatility(df: DataFrame, window_size=7) -> DataFrame:
+    def log_volatility(df: TypedDataFrame[KlineSchema], window_size=7) -> TypedDataFrame[KlineSchema]:
         """
         Volatility (standard deviation of returns) using logarithm, this normalizes data
         so it's easily comparable with other assets
@@ -152,7 +153,7 @@ class Indicators:
         return df
 
     @staticmethod
-    def set_twap(df: DataFrame, periods: int = 30) -> DataFrame:
+    def set_twap(df: TypedDataFrame[KlineSchema], periods: int = 30) -> TypedDataFrame[KlineSchema]:
         """
         Time-weighted average price
         https://stackoverflow.com/a/69517577/2454059
@@ -177,11 +178,11 @@ class Indicators:
 
     @staticmethod
     def atr(
-        df: DataFrame,
+        df: TypedDataFrame[KlineSchema],
         window: int = 14,
         min_periods: int | None = None,
         col_prefix: str = "",
-    ) -> DataFrame:
+    ) -> TypedDataFrame[KlineSchema]:
         """
         Generic ATR indicator.
 
@@ -212,11 +213,11 @@ class Indicators:
 
     @staticmethod
     def set_supertrend(
-        df: DataFrame,
+        df: TypedDataFrame[KlineSchema],
         atr_col: str = "ATR",
         multiplier: float = 3.0,
         prefix: str = "",
-    ) -> DataFrame:
+    ) -> TypedDataFrame[KlineSchema]:
         """
         Supertrend indicator.
 
