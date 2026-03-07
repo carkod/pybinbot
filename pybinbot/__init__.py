@@ -59,6 +59,7 @@ from pybinbot.models.signals import (
     HABollinguerSpread,
     SignalsConsumer,
     KlineProduceModel,
+    KlineSchema,
 )
 from pybinbot.models.routes import StandardResponse
 from pybinbot.apis.binance.base import BinanceApi
@@ -110,6 +111,7 @@ __all__ = [
     "HABollinguerSpread",
     "SignalsConsumer",
     "KlineProduceModel",
+    "KlineSchema",
     # misc
     "Amount",
     "CombinedApis",
