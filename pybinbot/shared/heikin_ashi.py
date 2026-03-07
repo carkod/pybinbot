@@ -198,7 +198,7 @@ class HeikinAshi:
         return df, df_1h, df_4h
 
     @staticmethod
-    def post_process(df: DataFrame) -> DataFrame:
+    def post_process(df: TypedDataFrame[KlineSchema]) -> TypedDataFrame[KlineSchema]:
         """
         Post-process the DataFrame by filling missing values and
         converting data types as needed.
