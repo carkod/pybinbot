@@ -3,6 +3,8 @@ from typing import cast
 from pandas import DataFrame, to_numeric, concat
 from pandas.api.types import is_numeric_dtype
 from pandas import to_datetime
+from pandera.typing import DataFrame as TypedDataFrame
+from pybinbot.models.signals import KlineSchema
 from pybinbot.shared.enums import ExchangeId
 
 
@@ -184,11 +186,12 @@ class HeikinAshi:
             "open_time": "first",
         }
 
-        df_4h = df.resample("4h").agg(cast(dict, resample_aggregation))
+        plain_df = cast(DataFrame, df)
+        df_4h = plain_df.resample("4h").agg(cast(dict, resample_aggregation))
         df_4h["open_time"] = df_4h.index
         df_4h["close_time"] = df_4h.index
 
-        df_1h = df.resample("1h").agg(cast(dict, resample_aggregation))
+        df_1h = plain_df.resample("1h").agg(cast(dict, resample_aggregation))
         df_1h["open_time"] = df_1h.index
         df_1h["close_time"] = df_1h.index
 
@@ -231,9 +234,9 @@ class HeikinAshi:
 
         return df
 
-    def get_heikin_ashi(self, df: DataFrame) -> DataFrame:
+    def get_heikin_ashi(self, df: DataFrame) -> TypedDataFrame[KlineSchema]:
         if df.empty:
-            return df
+            return cast(TypedDataFrame[KlineSchema], df)
 
         # Validate & coerce using the new type guard helper.
         df = self.ensure_ohlc(df)
@@ -270,4 +273,4 @@ class HeikinAshi:
         work.loc[:, "low"] = ha_low
         work.loc[:, "close"] = ha_close
 
-        return work
+        return cast(TypedDataFrame[KlineSchema], work)
