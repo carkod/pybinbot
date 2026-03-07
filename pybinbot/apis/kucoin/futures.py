@@ -7,11 +7,11 @@ from pybinbot.models.order import OrderBase
 from kucoin_universal_sdk.generate.futures.order import (
     AddOrderReqBuilder,
     GetOrderByOrderIdReqBuilder,
+    GetTradeHistoryReqBuilder,
+    GetTradeHistoryResp,
+    GetTradeHistoryReq,
 )
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
-from kucoin_universal_sdk.generate.futures.order.model_add_order_resp import (
-    AddOrderResp,
-)
 from kucoin_universal_sdk.generate.futures.order.model_get_order_by_order_id_resp import (
     GetOrderByOrderIdResp,
 )
@@ -144,59 +144,7 @@ class KucoinFutures(KucoinRest):
             order_type=OrderType.limit,
             reduce_only=reduce_only,
         )
-        if not order_resp or not order_resp.order_id:
-            order_resp = self.place_futures_order(
-                symbol=symbol,
-                side=AddOrderReq.SideEnum.BUY,
-                size=int(qty),
-                price=price,
-                leverage=int(self.DEFAULT_LEVERAGE),
-                order_type=OrderType.market,
-                reduce_only=reduce_only,
-            )
-
-        # Small delay to allow order to be processed and show up in order details endpoint;
-        sleep(5)
-        try:
-            # Fetch order details as source of truth for status/fills
-            order_details = self.retrieve_order(order_resp.order_id)
-            # status it he only enum field to help with db consistency
-            status = OrderStatus.map_from_kucoin_status(order_details.status.value)
-            filled_size = float(order_details.filled_size)
-            price_used = float(order_details.avg_deal_price)
-            timestamp = order_details.created_at
-
-        except RestError as e:
-            if float(e.response.code) == 100001:
-                order_details = GetOrderByOrderIdResp(
-                    order_id=order_resp.order_id,
-                    symbol=symbol,
-                    side=AddOrderReq.SideEnum.SELL.value,
-                    type=AddOrderReq.TypeEnum.LIMIT.value,
-                    price=str(price),
-                    size=str(qty),
-                    filled_size=str(qty),
-                    time_in_force=AddOrderReq.TimeInForceEnum.GOOD_TILL_CANCELED.value,
-                )
-                status = OrderStatus.NEW
-                filled_size = qty
-                price_used = price
-                timestamp = int(time() * 1000)
-            else:
-                raise e
-
-        return OrderBase(
-            order_type=order_details.type.value,
-            time_in_force=order_details.time_in_force,
-            timestamp=timestamp,
-            order_id=order_resp.order_id,
-            order_side=order_details.side.value,
-            pair=symbol,
-            qty=filled_size,
-            price=price_used,
-            status=status,
-            deal_type=DealType.base_order,
-        )
+        return order_resp
 
     def sell(
         self,
@@ -228,7 +176,7 @@ class KucoinFutures(KucoinRest):
             )
 
         try:
-            order_details = self.retrieve_order(order_resp.order_id)
+            order_details = self.retrieve_order(str(order_resp.order_id))
             status = OrderStatus.map_from_kucoin_status(order_details.status.value)
             filled_size = float(order_details.filled_size)
             price_used = float(order_details.avg_deal_price)
@@ -446,7 +394,7 @@ class KucoinFutures(KucoinRest):
         stop: AddOrderReq.StopEnum | None = None,
         stop_price: float | None = None,
         stop_price_type: AddOrderReq.StopPriceTypeEnum | None = None,
-    ) -> AddOrderResp:
+    ) -> OrderBase:
         """Place a Kucoin futures order using the official SDK.
 
         Args:
@@ -513,7 +461,62 @@ class KucoinFutures(KucoinRest):
             builder = builder.set_stop_price_type(stop_price_type)
 
         req = builder.build()
-        return self.futures_order_api.add_order(req)
+        order_resp = self.futures_order_api.add_order(req)
+
+        if not order_resp or not order_resp.order_id:
+            order_resp = self.place_futures_order(
+                symbol=symbol,
+                side=AddOrderReq.SideEnum.BUY,
+                size=int(size),
+                price=price,
+                leverage=int(self.DEFAULT_LEVERAGE),
+                order_type=OrderType.market,
+                reduce_only=reduce_only,
+            )
+
+        # Small delay to allow order to be processed and show up in order details endpoint;
+        sleep(5)
+        try:
+            # Fetch order details as source of truth for status/fills
+            order_details = self.retrieve_order(order_resp.order_id)
+            # status it he only enum field to help with db consistency
+            status = OrderStatus.map_from_kucoin_status(order_details.status.value)
+            filled_size = float(order_details.filled_size)
+            price_used = float(order_details.avg_deal_price)
+            timestamp = order_details.created_at
+
+        except RestError as e:
+            if float(e.response.code) == 100001:
+                price = order_details.price
+                order_details = GetOrderByOrderIdResp(
+                    order_id=str(order_resp.order_id),
+                    symbol=symbol,
+                    side=AddOrderReq.SideEnum.SELL.value,
+                    type=AddOrderReq.TypeEnum.LIMIT.value,
+                    price=str(price),
+                    size=str(size),
+                    filled_size=str(size),
+                    time_in_force=AddOrderReq.TimeInForceEnum.GOOD_TILL_CANCELED.value,
+                )
+                status = OrderStatus.NEW
+                filled_size = size
+                price_used = price
+                timestamp = int(time() * 1000)
+            else:
+                raise e
+
+        return OrderBase(
+            order_type=order_details.type.value,
+            time_in_force=order_details.time_in_force,
+            timestamp=timestamp,
+            order_id=order_resp.order_id,
+            order_side=order_details.side.value,
+            pair=symbol,
+            qty=filled_size,
+            price=price_used,
+            status=status,
+            deal_type=DealType.base_order,
+        )
 
     def get_futures_balance(self, fiat) -> GetFuturesAccountResp:
         """
@@ -555,3 +558,41 @@ class KucoinFutures(KucoinRest):
         """
         req = BatchCancelOrdersReqBuilder().set_order_ids_list(so_ids).build()
         return self.futures_order_api.batch_cancel_orders(req)
+
+    def get_fills(
+        self,
+        order_id: str | None = None,
+        symbol: str | None = None,
+        side: GetTradeHistoryReq.SideEnum | None = None,
+        order_type: GetTradeHistoryReq.TypeEnum | None = None,
+        trade_types: str | None = None,
+        start_at: int | None = None,
+        end_at: int | None = None,
+        current_page: int | None = None,
+        page_size: int | None = None,
+    ) -> GetTradeHistoryResp:
+        """Fetch trade fills via GET /api/v1/fills."""
+
+        builder = GetTradeHistoryReqBuilder()
+
+        if order_id is not None:
+            builder = builder.set_order_id(order_id)
+        if symbol is not None:
+            builder = builder.set_symbol(symbol)
+        if side is not None:
+            builder = builder.set_side(side)
+        if order_type is not None:
+            builder = builder.set_type(order_type)
+        if trade_types is not None:
+            builder = builder.set_trade_types(trade_types)
+        if start_at is not None:
+            builder = builder.set_start_at(start_at)
+        if end_at is not None:
+            builder = builder.set_end_at(end_at)
+        if current_page is not None:
+            builder = builder.set_current_page(current_page)
+        if page_size is not None:
+            builder = builder.set_page_size(page_size)
+
+        req = builder.build()
+        return self.futures_order_api.get_trade_history(req)
