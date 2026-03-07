@@ -3,6 +3,8 @@ from typing import cast
 from pandas import DataFrame, to_numeric, concat
 from pandas.api.types import is_numeric_dtype
 from pandas import to_datetime
+from pandera.typing import DataFrame as TypedDataFrame
+from pybinbot.models.signals import KlineSchema
 from pybinbot.shared.enums import ExchangeId
 
 
@@ -231,7 +233,7 @@ class HeikinAshi:
 
         return df
 
-    def get_heikin_ashi(self, df: DataFrame) -> DataFrame:
+    def get_heikin_ashi(self, df: DataFrame) -> TypedDataFrame[KlineSchema]:
         if df.empty:
             return df
 
