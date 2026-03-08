@@ -1,10 +1,14 @@
+from typing import cast
+
 import pytest
 from pandas import DataFrame
 import pandas as pd
 import numpy as np
+from pandera.typing import DataFrame as TypedDataFrame
 
 from pybinbot.shared.heikin_ashi import HeikinAshi
 from pybinbot.shared.enums import ExchangeId
+from pybinbot.models.signals import KlineSchema
 
 
 class TestHeikinAshi:
@@ -183,11 +187,14 @@ class TestHeikinAshi:
 
     def test_post_process_removes_nan(self, heikin_ashi: HeikinAshi):
         """Test post_process removes NaN values."""
-        df = DataFrame(
-            {
-                "col1": [1.0, np.nan, 3.0],
-                "col2": [4.0, 5.0, 6.0],
-            }
+        df = cast(
+            TypedDataFrame[KlineSchema],
+            DataFrame(
+                {
+                    "col1": [1.0, np.nan, 3.0],
+                    "col2": [4.0, 5.0, 6.0],
+                }
+            ),
         )
         original_len = len(df)
         result = heikin_ashi.post_process(df)
@@ -199,7 +206,10 @@ class TestHeikinAshi:
 
     def test_post_process_resets_index(self, heikin_ashi: HeikinAshi):
         """Test post_process resets DataFrame index."""
-        df = DataFrame({"col1": [1.0, 2.0, 3.0]}, index=[10, 20, 30])
+        df = cast(
+            TypedDataFrame[KlineSchema],
+            DataFrame({"col1": [1.0, 2.0, 3.0]}, index=[10, 20, 30]),
+        )
         result = heikin_ashi.post_process(df)
 
         assert result.index.tolist() == [0, 1, 2]
@@ -323,12 +333,15 @@ class TestHeikinAshi:
 
     def test_post_process_mutates_inplace(self, heikin_ashi: HeikinAshi):
         """Test that post_process mutates the original DataFrame in-place."""
-        df = DataFrame(
-            {
-                "col1": [1.0, 2.0, 3.0],
-                "col2": [4.0, 5.0, 6.0],
-            },
-            index=[10, 20, 30],
+        df = cast(
+            TypedDataFrame[KlineSchema],
+            DataFrame(
+                {
+                    "col1": [1.0, 2.0, 3.0],
+                    "col2": [4.0, 5.0, 6.0],
+                },
+                index=[10, 20, 30],
+            ),
         )
         original_id = id(df)
 

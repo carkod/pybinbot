@@ -596,3 +596,26 @@ class KucoinFutures(KucoinRest):
 
         req = builder.build()
         return self.futures_order_api.get_trade_history(req)
+
+    def get_open_interest(self, symbol: str) -> str:
+        """
+        Get the current open interest (in lots) for a futures symbol.
+
+        KuCoin does not expose a dedicated /api/v1/contracts/openInterest
+        endpoint.  Open interest is returned as part of the contract details
+        from GET /api/v1/contracts/{symbol}, so this method wraps
+        ``get_symbol_info`` and extracts the ``open_interest`` field.
+
+        Args:
+            symbol: Futures contract symbol, e.g. "XBTUSDTM".
+
+        Returns:
+            Open interest as a string representing lots.
+
+        Raises:
+            ValueError: If open interest data is not available for the symbol.
+        """
+        info = self.get_symbol_info(symbol)
+        if info.open_interest is None:
+            raise ValueError(f"open_interest not available for symbol {symbol}")
+        return info.open_interest
