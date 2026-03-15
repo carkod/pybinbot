@@ -4,7 +4,7 @@ from pybinbot import ExchangeId, Status
 from requests import Session
 from pybinbot.shared.handlers import handle_binbot_errors, aio_response_handler
 from pybinbot.apis.binance.base import BinanceApi
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 
 class BinbotApi:
@@ -18,6 +18,7 @@ class BinbotApi:
         # Service credentials from environment
         self.service_email = service_email
         self.service_password = service_password
+        self.expiry_date = None
 
         if not all([self.service_email, self.service_password]):
             raise EnvironmentError("SERVICE_EMAIL and SERVICE_PASSWORD must be set")
@@ -96,13 +97,13 @@ class BinbotApi:
             )
         else:
             self.token = data.get("access_token")
-            self.expiry_date = data.get("expires_in")
+            self.expiry_date = datetime.now(timezone.utc) + timedelta(seconds=data.get("expires_in", 0))
 
     def _auth_headers(self):
         """
         Returns headers with Bearer token. Refresh token if expired.
         """
-        if self.token is None or datetime.now(timezone.utc) >= self.token_expiry:
+        if self.token is None or datetime.now(timezone.utc) >= self.expiry_date:
             self._login_service_account()
         return {"Authorization": f"Bearer {self.token}"}
 
