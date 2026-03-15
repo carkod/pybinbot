@@ -103,6 +103,10 @@ def handle_binbot_errors(response: Response) -> dict[Any, Any]:
 
     content = response.json()
 
+    if response.status_code == 401:
+        if "detail" in content:
+            raise BinbotErrors(message=content["detail"])
+
     # Show error messsage for bad requests
     if response.status_code >= 400:
         # Binbot errors
