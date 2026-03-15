@@ -2,20 +2,32 @@ from typing import Any
 from aiohttp import ClientSession
 from pybinbot import ExchangeId, Status
 from requests import Session
-from pybinbot import BinanceApi, handle_binance_errors, aio_response_handler
+from pybinbot.shared.handlers import handle_binbot_errors, aio_response_handler
+from pybinbot.apis.binance.base import BinanceApi
+from datetime import datetime, timezone
 
 
 class BinbotApi:
-    def __init__(self, base_url: str) -> None:
+    def __init__(
+        self, base_url: str, service_email: str, service_password: str
+    ) -> None:
         """
         API endpoints on this project itself
         includes Binance Api
         """
+        # Service credentials from environment
+        self.service_email = service_email
+        self.service_password = service_password
+
+        if not all([self.service_email, self.service_password]):
+            raise EnvironmentError("SERVICE_EMAIL and SERVICE_PASSWORD must be set")
 
         if not base_url:
             raise ValueError("Base URL must be provided for BinbotApi")
 
         bb_base_url = base_url
+
+        self.bb_login = f"{bb_base_url}/user/login"
 
         self.bb_symbols_raw = f"{bb_base_url}/account/symbols"
         self.bb_bot_url = f"{bb_base_url}/bot"
@@ -66,11 +78,39 @@ class BinbotApi:
         self.bb_test_autotrade_url = f"{bb_base_url}/autotrade-settings/paper-trading"
         self.bb_test_active_pairs = f"{bb_base_url}/paper-trading/active-pairs"
 
+        # service account login
+        self._login_service_account()
+
+    def _login_service_account(self):
+        """
+        Logs in using service credentials and stores JWT for future requests.
+        """
+        form_data = {
+            "username": self.service_email,
+            "password": self.service_password,
+        }
+        data = self.request(url=self.bb_login, method="POST", data=form_data)
+        if data["error"] > 0:
+            raise RuntimeError(
+                f"Service login failed: {data['error']} {data['message']}"
+            )
+        else:
+            self.token = data.get("access_token")
+            self.expiry_date = data.get("expires_in")
+
+    def _auth_headers(self):
+        """
+        Returns headers with Bearer token. Refresh token if expired.
+        """
+        if self.token is None or datetime.now(timezone.utc) >= self.token_expiry:
+            self._login_service_account()
+        return {"Authorization": f"Bearer {self.token}"}
+
     def request(
         self, url, method="GET", session: Session = Session(), **kwargs
     ) -> dict[Any, Any]:
         res = session.request(url=url, method=method, **kwargs)
-        data = handle_binance_errors(res)
+        data = handle_binbot_errors(res)
         return data
 
     async def fetch(self, url, method="GET", **kwargs) -> dict[Any, Any]:
