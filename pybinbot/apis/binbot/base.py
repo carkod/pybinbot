@@ -5,7 +5,7 @@ from requests import Session
 from pybinbot.shared.handlers import handle_binbot_errors, aio_response_handler
 from pybinbot.apis.binance.base import BinanceApi
 from datetime import datetime, timezone
-
+from dateutil.parser import parse
 
 class BinbotApi:
     def __init__(
@@ -18,6 +18,8 @@ class BinbotApi:
         # Service credentials from environment
         self.service_email = service_email
         self.service_password = service_password
+        self.token = None
+        self.expiry_date = None
 
         if not all([self.service_email, self.service_password]):
             raise EnvironmentError("SERVICE_EMAIL and SERVICE_PASSWORD must be set")
@@ -84,32 +86,46 @@ class BinbotApi:
     def _login_service_account(self):
         """
         Logs in using service credentials and stores JWT for future requests.
+        it has to be a separate session and request,
+        because we still don't have the 
         """
+        session = Session()
         form_data = {
             "username": self.service_email,
             "password": self.service_password,
         }
-        data = self.request(url=self.bb_login, method="POST", data=form_data)
-        if data["error"] > 0:
+        content = self.request(url=self.bb_login, method="POST", authenticate=False, data=form_data)
+        if content["error"] > 0:
             raise RuntimeError(
-                f"Service login failed: {data['error']} {data['message']}"
+                f"Service login failed: {content['error']} {content['message']}"
             )
         else:
-            self.token = data.get("access_token")
-            self.expiry_date = data.get("expires_in")
+            self.token = content["data"]["access_token"]
+            self.expiry_date = content["data"]["expires_in"]
 
     def _auth_headers(self):
         """
         Returns headers with Bearer token. Refresh token if expired.
         """
-        if self.token is None or datetime.now(timezone.utc) >= self.token_expiry:
+        if self.expiry_date:
+            date = parse(self.expiry_date)
+            is_expired = datetime.now(timezone.utc) >= date
+        else:
+            is_expired = False
+
+        if self.token is None or is_expired:
             self._login_service_account()
+        
         return {"Authorization": f"Bearer {self.token}"}
 
     def request(
-        self, url, method="GET", session: Session = Session(), **kwargs
+        self, url, method="GET", session: Session = Session(), authenticate=True, **kwargs
     ) -> dict[Any, Any]:
-        res = session.request(url=url, method=method, **kwargs)
+        if authenticate:
+            headers = self._auth_headers()
+        else:
+            headers = None
+        res = session.request(url=url, method=method, headers=headers, **kwargs)
         data = handle_binbot_errors(res)
         return data
 
