@@ -51,7 +51,11 @@ from pybinbot.shared.heikin_ashi import HeikinAshi
 from pybinbot.shared.logging_config import configure_logging
 from pybinbot.shared.types import Amount, CombinedApis
 from pybinbot.shared.cache import cache
-from pybinbot.shared.handlers import handle_binance_errors, aio_response_handler, handle_binbot_errors
+from pybinbot.shared.handlers import (
+    handle_binance_errors,
+    aio_response_handler,
+    handle_binbot_errors,
+)
 from pybinbot.models.bot_base import BotBase
 from pybinbot.models.deal import DealBase
 from pybinbot.models.order import OrderBase
