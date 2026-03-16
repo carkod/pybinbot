@@ -19,8 +19,8 @@ class BinbotApi:
         # Service credentials from environment
         self.service_email = service_email
         self.service_password = service_password
-        self.token = None
-        self.expiry_date = None
+        self.token: str | None = None
+        self.expiry_date: str | None = None
 
         if not all([self.service_email, self.service_password]):
             raise EnvironmentError("SERVICE_EMAIL and SERVICE_PASSWORD must be set")
