@@ -13,8 +13,8 @@ class BinbotApi:
     Process level caching
     """
 
-    _token_cache: str | None = None
-    _expiry_cache: str | None = None
+    token: str | None = None
+    expiry_date: str | None = None
 
     def __init__(
         self, base_url: str, service_email: str, service_password: str
@@ -89,11 +89,8 @@ class BinbotApi:
         self.bb_test_active_pairs = f"{bb_base_url}/paper-trading/active-pairs"
 
         # service account login
-        if not self._token_cache:
+        if not self.token:
             self._login_service_account()
-
-        self.token = self._token_cache
-        self.expiry_date = self._expiry_cache
 
     def _login_service_account(self):
         """
@@ -113,8 +110,8 @@ class BinbotApi:
                 f"Service login failed: {content['error']} {content['message']}"
             )
         else:
-            self._token_cache = content["data"]["access_token"]
-            self._expiry_cache = content["data"]["expires_in"]
+            self.token = content["data"]["access_token"]
+            self.expiry_date = content["data"]["expires_in"]
 
     def _auth_headers(self):
         """
