@@ -9,6 +9,12 @@ from dateutil.parser import parse
 
 
 class BinbotApi:
+    """
+    Process level caching
+    """
+    _token_cache: str | None = None
+    _expiry_cache: datetime | None = None
+
     def __init__(
         self, base_url: str, service_email: str, service_password: str
     ) -> None:
@@ -82,7 +88,11 @@ class BinbotApi:
         self.bb_test_active_pairs = f"{bb_base_url}/paper-trading/active-pairs"
 
         # service account login
-        self._login_service_account()
+        if not self._token_cache:
+            self._login_service_account()
+
+        self.token = self._token_cache
+        self.expiry_date = self._expiry_cache
 
     def _login_service_account(self):
         """
@@ -102,8 +112,8 @@ class BinbotApi:
                 f"Service login failed: {content['error']} {content['message']}"
             )
         else:
-            self.token = content["data"]["access_token"]
-            self.expiry_date = content["data"]["expires_in"]
+            self._token_cache = content["data"]["access_token"]
+            self._expiry_cache = content["data"]["expires_in"]
 
     def _auth_headers(self):
         """
