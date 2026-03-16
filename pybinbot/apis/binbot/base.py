@@ -147,13 +147,17 @@ class BinbotApi:
         data = handle_binbot_errors(res)
         return data
 
-    async def fetch(self, url, method="GET", **kwargs) -> dict[Any, Any]:
+    async def fetch(self, url, method="GET", authenticate=True, **kwargs) -> dict[Any, Any]:
         """
         Async HTTP client/server for asyncio
         that replaces requests library
         """
+        if authenticate:
+            headers = self._auth_headers()
+        else:
+            headers = None
         async with ClientSession() as session:
-            async with session.request(method=method, url=url, **kwargs) as response:
+            async with session.request(method=method, url=url, headers=headers, **kwargs) as response:
                 data = await aio_response_handler(response)
                 return data
 
@@ -333,6 +337,7 @@ class BinbotApi:
 
         res = self.request(
             url=url,
+            authenticate=True,
         )
 
         if res["data"] is None:
