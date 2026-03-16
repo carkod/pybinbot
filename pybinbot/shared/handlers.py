@@ -88,3 +88,29 @@ def handle_binance_errors(response: Response) -> dict[Any, Any]:
             raise InvalidSymbol(f"Binance error: {content['msg']}", content["code"])
 
     return content
+
+
+def handle_binbot_errors(response: Response) -> dict[Any, Any]:
+    """
+    Handles:
+    - HTTP codes, not authorized, rate limits...
+    - Bad request errors, binance internal e.g. {"code": -1013, "msg": "Invalid quantity"}
+    - Binbot internal errors - bot errors, returns "errored"
+
+    """
+    if response.status_code == 404:
+        raise HTTPError(response=response)
+
+    content = response.json()
+
+    if response.status_code == 401:
+        if "detail" in content:
+            raise BinbotErrors(msg=content["detail"])
+
+    # Show error messsage for bad requests
+    if response.status_code >= 400:
+        # Binbot errors
+        if content and "error" in content and content["error"] == 1:
+            raise BinbotErrors(content["message"], content["error"])
+
+    return content

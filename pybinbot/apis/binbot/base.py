@@ -2,20 +2,42 @@ from typing import Any
 from aiohttp import ClientSession
 from pybinbot import ExchangeId, Status
 from requests import Session
-from pybinbot import BinanceApi, handle_binance_errors, aio_response_handler
+from pybinbot.shared.handlers import handle_binbot_errors, aio_response_handler
+from pybinbot.apis.binance.base import BinanceApi
+from datetime import datetime, timezone
+from dateutil.parser import parse
 
 
 class BinbotApi:
-    def __init__(self, base_url: str) -> None:
+    """
+    Process level caching
+    """
+
+    token: str | None = None
+    expiry_date: str | None = None
+
+    def __init__(
+        self, base_url: str, service_email: str, service_password: str
+    ) -> None:
         """
         API endpoints on this project itself
         includes Binance Api
         """
+        # Service credentials from environment
+        self.service_email = service_email
+        self.service_password = service_password
+        self.token: str | None = None
+        self.expiry_date: str | None = None
+
+        if not all([self.service_email, self.service_password]):
+            raise EnvironmentError("SERVICE_EMAIL and SERVICE_PASSWORD must be set")
 
         if not base_url:
             raise ValueError("Base URL must be provided for BinbotApi")
 
         bb_base_url = base_url
+
+        self.bb_login = f"{bb_base_url}/user/login"
 
         self.bb_symbols_raw = f"{bb_base_url}/account/symbols"
         self.bb_bot_url = f"{bb_base_url}/bot"
@@ -66,20 +88,77 @@ class BinbotApi:
         self.bb_test_autotrade_url = f"{bb_base_url}/autotrade-settings/paper-trading"
         self.bb_test_active_pairs = f"{bb_base_url}/paper-trading/active-pairs"
 
+        # service account login
+        if not self.token:
+            self._login_service_account()
+
+    def _login_service_account(self):
+        """
+        Logs in using service credentials and stores JWT for future requests.
+        it has to be a separate session and request,
+        because we still don't have the
+        """
+        form_data = {
+            "username": self.service_email,
+            "password": self.service_password,
+        }
+        content = self.request(
+            url=self.bb_login, method="POST", authenticate=False, data=form_data
+        )
+        if content["error"] > 0:
+            raise RuntimeError(
+                f"Service login failed: {content['error']} {content['message']}"
+            )
+        else:
+            self.token = content["data"]["access_token"]
+            self.expiry_date = content["data"]["expires_in"]
+
+    def _auth_headers(self):
+        """
+        Returns headers with Bearer token. Refresh token if expired.
+        """
+        if self.expiry_date:
+            date = parse(self.expiry_date)
+            is_expired = datetime.now(timezone.utc) >= date
+        else:
+            is_expired = False
+
+        if self.token is None or is_expired:
+            self._login_service_account()
+
+        return {"Authorization": f"Bearer {self.token}"}
+
     def request(
-        self, url, method="GET", session: Session = Session(), **kwargs
+        self,
+        url,
+        method="GET",
+        session: Session = Session(),
+        authenticate=True,
+        **kwargs,
     ) -> dict[Any, Any]:
-        res = session.request(url=url, method=method, **kwargs)
-        data = handle_binance_errors(res)
+        if authenticate:
+            headers = self._auth_headers()
+        else:
+            headers = None
+        res = session.request(url=url, method=method, headers=headers, **kwargs)
+        data = handle_binbot_errors(res)
         return data
 
-    async def fetch(self, url, method="GET", **kwargs) -> dict[Any, Any]:
+    async def fetch(
+        self, url, method="GET", authenticate=True, **kwargs
+    ) -> dict[Any, Any]:
         """
         Async HTTP client/server for asyncio
         that replaces requests library
         """
+        if authenticate:
+            headers = self._auth_headers()
+        else:
+            headers = None
         async with ClientSession() as session:
-            async with session.request(method=method, url=url, **kwargs) as response:
+            async with session.request(
+                method=method, url=url, headers=headers, **kwargs
+            ) as response:
                 data = await aio_response_handler(response)
                 return data
 
@@ -259,6 +338,7 @@ class BinbotApi:
 
         res = self.request(
             url=url,
+            authenticate=True,
         )
 
         if res["data"] is None:
