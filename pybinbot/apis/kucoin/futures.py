@@ -100,6 +100,15 @@ class KucoinFutures(KucoinRest):
             raise ValueError(f"tick_size not available for symbol {symbol}")
         return float(info.tick_size)
 
+    def _calculate_price_precision(self, symbol) -> int:
+        """
+        Decimals needed for Binance price
+        @deprecated - use calculate_price_precision
+        """
+        precision = -1 * (Decimal(str(self._tick_size(symbol))).as_tuple().exponent)
+        price_precision = int(precision)
+        return price_precision
+
     def matching_engine(
         self, symbol: str, size: float, side: AddOrderReq.SideEnum
     ) -> float:
@@ -123,7 +132,9 @@ class KucoinFutures(KucoinRest):
             best_bid = Decimal(book.bids[0][0])
             price = best_bid - tick
 
-        final_price = round_numbers(float(price), self._tick_size(symbol))
+        final_price = round_numbers(
+            float(price), self._calculate_price_precision(symbol)
+        )
         return float(final_price)
 
     def buy(
