@@ -6,8 +6,13 @@ from pybinbot.shared.types import Amount
 class DealBase(BaseModel):
     """Operational deal data model with numeric fields."""
 
-    base_order_size: Amount = Field(default=0, gt=-1)
-    current_price: Amount = Field(default=0)
+    base_order_size: Amount = Field(
+        default=0, gt=-1, description="For Futures, this is the number of contracts"
+    )
+    current_price: Amount = Field(
+        default=0,
+        description="Current price of the symbol. This can come from a ticker or in Futures this would be the mark price",
+    )
     take_profit_price: Amount = Field(default=0)
     trailling_stop_loss_price: Amount = Field(
         default=0,

@@ -66,6 +66,8 @@ from kucoin_universal_sdk.generate.futures.order.model_batch_cancel_orders_resp 
     BatchCancelOrdersResp,
 )
 
+from pybinbot.shared.maths import round_numbers
+
 
 class KucoinFutures(KucoinRest):
     """
@@ -98,6 +100,15 @@ class KucoinFutures(KucoinRest):
             raise ValueError(f"tick_size not available for symbol {symbol}")
         return float(info.tick_size)
 
+    def _calculate_price_precision(self, symbol) -> int:
+        """
+        Decimals needed for Binance price
+        @deprecated - use calculate_price_precision
+        """
+        precision = -1 * (Decimal(str(self._tick_size(symbol))).as_tuple().exponent)
+        price_precision = int(precision)
+        return price_precision
+
     def matching_engine(
         self, symbol: str, size: float, side: AddOrderReq.SideEnum
     ) -> float:
@@ -121,7 +132,10 @@ class KucoinFutures(KucoinRest):
             best_bid = Decimal(book.bids[0][0])
             price = best_bid - tick
 
-        return float(price)
+        final_price = round_numbers(
+            float(price), self._calculate_price_precision(symbol)
+        )
+        return float(final_price)
 
     def buy(
         self,
@@ -134,7 +148,6 @@ class KucoinFutures(KucoinRest):
         leverage is set separately via set_futures_leverage
         """
         price = self.matching_engine(symbol, size=qty, side=AddOrderReq.SideEnum.BUY)
-
         order_resp = self.place_futures_order(
             symbol=symbol,
             side=AddOrderReq.SideEnum.BUY,
