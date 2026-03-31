@@ -216,15 +216,17 @@ class TestHeikinAshi:
 
     def test_pre_process_kucoin(self, heikin_ashi: HeikinAshi, sample_kucoin_candles):
         """Test pre_process with KuCoin candles."""
-        df, df_1h, df_4h = heikin_ashi.pre_process(
+        df, df_15m, df_1h, df_4h = heikin_ashi.pre_process(
             ExchangeId.KUCOIN, sample_kucoin_candles
         )
 
         # Check that all DataFrames are returned and not empty
         assert isinstance(df, DataFrame)
+        assert isinstance(df_15m, DataFrame)
         assert isinstance(df_1h, DataFrame)
         assert isinstance(df_4h, DataFrame)
         assert not df.empty
+        assert not df_15m.empty
 
         # Check that required columns are present
         assert "open" in df.columns
@@ -234,12 +236,13 @@ class TestHeikinAshi:
 
     def test_pre_process_binance(self, heikin_ashi: HeikinAshi, sample_binance_candles):
         """Test pre_process with Binance candles."""
-        df, df_1h, df_4h = heikin_ashi.pre_process(
+        df, df_15m, df_1h, df_4h = heikin_ashi.pre_process(
             ExchangeId.BINANCE, sample_binance_candles
         )
 
         # Check that all DataFrames are returned
         assert isinstance(df, DataFrame)
+        assert isinstance(df_15m, DataFrame)
         assert isinstance(df_1h, DataFrame)
         assert isinstance(df_4h, DataFrame)
 
@@ -247,7 +250,7 @@ class TestHeikinAshi:
         self, heikin_ashi: HeikinAshi, sample_kucoin_candles
     ):
         """Test that pre_process correctly resamples to 1h and 4h."""
-        df, df_1h, df_4h = heikin_ashi.pre_process(
+        df, df_15m, df_1h, df_4h = heikin_ashi.pre_process(
             ExchangeId.KUCOIN, sample_kucoin_candles
         )
 
