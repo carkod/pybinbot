@@ -183,6 +183,14 @@ class HeikinAshi:
         df = df[~df.index.duplicated(keep="last")]
         return df
 
+    def _set_open_time_index(self, df: DataFrame) -> DataFrame:
+        df = df.copy()
+        df["timestamp"] = to_datetime(df["open_time"], unit="ms")
+        df.set_index("timestamp", inplace=True)
+        df = df.sort_index()
+        df = df[~df.index.duplicated(keep="last")]
+        return df
+
     def _build_15m_from_5m(self, df_indexed: DataFrame) -> DataFrame:
         resample_aggregation = {
             "open": "first",
@@ -202,15 +210,34 @@ class HeikinAshi:
         df_15m = df_15m.dropna(subset=["open", "high", "low", "close"])
         return df_15m
 
+    def _resample_from_5m(self, df_indexed: DataFrame, rule: str) -> DataFrame:
+        resample_aggregation = {
+            "open": "first",
+            "close": "last",
+            "high": "max",
+            "low": "min",
+            "volume": "sum",
+            "quote_asset_volume": "sum",
+            "close_time": "first",
+            "open_time": "first",
+        }
+        df_resampled = (
+            cast(DataFrame, df_indexed)
+            .resample(rule)
+            .agg(cast(dict, resample_aggregation))
+        )
+        df_resampled = df_resampled.dropna(subset=["open", "high", "low", "close"])
+        return df_resampled
+
     def _run_15m_parity_check(
         self,
         exchange: ExchangeId,
         synthetic_15m_df: DataFrame,
         parity_exchange_15m_candles: list | None,
         parity_symbol: str | None,
-    ) -> None:
+    ) -> DataFrame | None:
         if not parity_exchange_15m_candles:
-            return
+            return None
 
         if parity_symbol is None:
             logging.error(
@@ -218,11 +245,11 @@ class HeikinAshi:
                 parity_symbol,
                 "15m",
             )
-            return
+            return None
 
         symbol_key = parity_symbol
         if not self.is_15m_parity_check_due(parity_symbol):
-            return
+            return None
 
         self._last_parity_check_ms_by_symbol[symbol_key] = int(time() * 1000)
 
@@ -230,10 +257,10 @@ class HeikinAshi:
             exchange, parity_exchange_15m_candles
         )
         exchange_15m_df = self._prepare_numeric_ohlcv(exchange_15m_df)
-        exchange_15m_df = self._set_time_index(exchange_15m_df)
+        exchange_15m_df = self._set_open_time_index(exchange_15m_df)
 
         cols = ["open", "high", "low", "close", "volume"]
-        synthetic = synthetic_15m_df[cols].copy()
+        synthetic = self._set_open_time_index(synthetic_15m_df)[cols].copy()
         exchange_direct = exchange_15m_df[cols].copy()
 
         common_idx = synthetic.index.intersection(exchange_direct.index)
@@ -242,7 +269,14 @@ class HeikinAshi:
                 "15m parity discrepancy detected for symbol=%s: no overlapping candle timestamps",
                 symbol_key,
             )
-            return
+            return None
+
+        # Ignore the currently forming 15m bucket. Exchange-provided 15m candles may
+        # still be accumulating volume while the synthetic frame only includes closed 5m data.
+        current_bucket = to_datetime(int(time() * 1000), unit="ms").floor("15min")
+        common_idx = common_idx[common_idx < current_bucket]
+        if common_idx.empty:
+            return None
 
         common_idx = common_idx[-50:]
         synthetic = synthetic.loc[common_idx]
@@ -275,7 +309,9 @@ class HeikinAshi:
                     synthetic.iloc[mismatch_pos][col],
                     exchange_direct.iloc[mismatch_pos][col],
                 )
-                return
+                return exchange_15m_df.reset_index(drop=True)
+
+        return None
 
     def pre_process(
         self,
@@ -284,21 +320,28 @@ class HeikinAshi:
         parity_symbol: str | None = None,
         parity_exchange_15m_candles: list | None = None,
     ):
-        df_1h = DataFrame()
-        df_4h = DataFrame()
-
         raw_df = self._build_df_from_raw_candles(exchange, candles)
         raw_df = self._prepare_numeric_ohlcv(raw_df)
 
         # 15m synthetic candles from 5m input for parity/backtest checks and strategy frame.
         raw_indexed = self._set_time_index(raw_df)
         synthetic_15m_df = self._build_15m_from_5m(raw_indexed)
-        self._run_15m_parity_check(
+        synthetic_1h_df = self._resample_from_5m(raw_indexed, "1h")
+        synthetic_4h_df = self._resample_from_5m(raw_indexed, "4h")
+        parity_15m_df = self._run_15m_parity_check(
             exchange=exchange,
             synthetic_15m_df=synthetic_15m_df,
             parity_exchange_15m_candles=parity_exchange_15m_candles,
             parity_symbol=parity_symbol,
         )
+        if parity_exchange_15m_candles:
+            exchange_15m_df = self._build_df_from_raw_candles(
+                exchange, parity_exchange_15m_candles
+            )
+            exchange_15m_df = self._prepare_numeric_ohlcv(exchange_15m_df)
+            synthetic_15m_df = exchange_15m_df
+        elif parity_15m_df is not None:
+            synthetic_15m_df = parity_15m_df
 
         # Base 5m Heikin Ashi dataframe.
         df = self.get_heikin_ashi(raw_df)
@@ -308,24 +351,12 @@ class HeikinAshi:
         df_15m = self.get_heikin_ashi(synthetic_15m_df.reset_index(drop=True))
         df_15m = cast(TypedDataFrame[KlineSchema], self._set_time_index(df_15m))
 
-        resample_aggregation = {
-            "open": "first",
-            "close": "last",
-            "high": "max",
-            "low": "min",
-            "volume": "sum",
-            "close_time": "first",
-            "open_time": "first",
-        }
+        # 1h/4h frames should also be built from raw 5m candles first, then transformed.
+        df_1h = self.get_heikin_ashi(synthetic_1h_df.reset_index(drop=True))
+        df_1h = cast(TypedDataFrame[KlineSchema], self._set_time_index(df_1h))
 
-        plain_df = cast(DataFrame, df_15m)
-        df_4h = plain_df.resample("4h").agg(cast(dict, resample_aggregation))
-        df_4h["open_time"] = df_4h.index
-        df_4h["close_time"] = df_4h.index
-
-        df_1h = plain_df.resample("1h").agg(cast(dict, resample_aggregation))
-        df_1h["open_time"] = df_1h.index
-        df_1h["close_time"] = df_1h.index
+        df_4h = self.get_heikin_ashi(synthetic_4h_df.reset_index(drop=True))
+        df_4h = cast(TypedDataFrame[KlineSchema], self._set_time_index(df_4h))
 
         return df, df_15m, df_1h, df_4h
 

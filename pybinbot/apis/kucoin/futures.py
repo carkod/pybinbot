@@ -361,7 +361,7 @@ class KucoinFutures(KucoinRest):
         self,
         symbol: str,
         interval: str,
-        limit: int = 500,
+        limit: int = 800,
         start_time=None,
         end_time=None,
     ) -> list[list]:
@@ -374,7 +374,12 @@ class KucoinFutures(KucoinRest):
             end_time = now_ms - (now_ms % interval_ms)
 
         if start_time is None:
-            start_time = int(end_time) - (limit * interval_ms)
+            window_multiplier = (
+                3
+                if interval_minutes == KucoinKlineIntervals.FIVE_MINUTES.to_minutes()
+                else 1
+            )
+            start_time = int(end_time) - (limit * window_multiplier * interval_ms)
 
         try:
             params: dict[str, str | int] = {
@@ -401,7 +406,7 @@ class KucoinFutures(KucoinRest):
             klines = []
             for kline in content["data"]:
                 open_time_ms = int(kline[0]) * 1000
-                close_time_ms = (open_time_ms + interval_ms - 1) * 1000
+                close_time_ms = open_time_ms + interval_ms - 1
                 klines.append(
                     [
                         open_time_ms,
