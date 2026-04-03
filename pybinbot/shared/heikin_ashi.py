@@ -244,6 +244,13 @@ class HeikinAshi:
             )
             return
 
+        # Ignore the currently forming 15m bucket. Exchange-provided 15m candles may
+        # still be accumulating volume while the synthetic frame only includes closed 5m data.
+        current_bucket = to_datetime(int(time() * 1000), unit="ms").floor("15min")
+        common_idx = common_idx[common_idx < current_bucket]
+        if common_idx.empty:
+            return
+
         common_idx = common_idx[-50:]
         synthetic = synthetic.loc[common_idx]
         exchange_direct = exchange_direct.loc[common_idx]
