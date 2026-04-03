@@ -1,5 +1,6 @@
 from decimal import Decimal
 from pybinbot import KucoinRest, KucoinKlineIntervals, OrderType, OrderStatus, DealType
+from requests import HTTPError, request
 from uuid import uuid4
 from time import sleep, time
 from typing import List
@@ -296,7 +297,7 @@ class KucoinFutures(KucoinRest):
         )
         return self.transfer_api.flex_transfer(req)
 
-    def get_ui_klines(
+    def get_klines(
         self,
         symbol: str,
         interval: str,
@@ -355,6 +356,74 @@ class KucoinFutures(KucoinRest):
         klines.sort(key=lambda x: x[0])
 
         return klines[-limit:]
+
+    def get_ui_klines(
+        self,
+        symbol: str,
+        interval: str,
+        limit: int = 500,
+        start_time=None,
+        end_time=None,
+    ) -> list[list]:
+        interval_enum = KucoinKlineIntervals(interval)
+        interval_minutes = interval_enum.to_minutes()
+        interval_ms = interval_minutes * 60 * 1000
+
+        if end_time is None:
+            now_ms = int(time() * 1000)
+            end_time = now_ms - (now_ms % interval_ms)
+
+        if start_time is None:
+            start_time = int(end_time) - (limit * interval_ms)
+
+        try:
+            params: dict[str, str | int] = {
+                "type": interval,
+                "begin": int(start_time) // 1000,
+                "end": int(end_time) // 1000,
+                "symbol": symbol,
+            }
+            response = request(
+                method="GET",
+                url="https://www.kucoin.com/_api_kumex/kumex-kline/v3/kline/history",
+                params=params,
+                timeout=15,
+            )
+            if response.status_code >= 400:
+                raise HTTPError(response=response)
+
+            content = response.json()
+            if content["code"] != "200":
+                raise ValueError(
+                    f"Unexpected KuCoin dashboard response code: {content.get('code')}"
+                )
+
+            klines = []
+            for kline in content["data"]:
+                open_time_ms = int(kline[0]) * 1000
+                close_time_ms = (open_time_ms + interval_ms - 1) * 1000
+                klines.append(
+                    [
+                        open_time_ms,
+                        float(kline[1]),
+                        float(kline[2]),
+                        float(kline[3]),
+                        float(kline[4]),
+                        float(kline[5]),
+                        close_time_ms,
+                    ]
+                )
+
+            klines.sort(key=lambda x: x[0])
+            return klines
+        except Exception:
+            return self.get_klines(
+                symbol=symbol,
+                interval=interval,
+                limit=limit,
+                start_time=start_time,
+                end_time=end_time,
+            )
 
     def set_futures_leverage(
         self, symbol: str, leverage: int
