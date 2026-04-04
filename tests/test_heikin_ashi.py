@@ -23,69 +23,56 @@ class TestHeikinAshi:
     def sample_kucoin_candles(self):
         """Create sample KuCoin format candles for testing."""
         base_time = 1609459200000  # 2021-01-01 00:00:00 UTC in milliseconds
-        candles = [
-            [
-                base_time,
-                "100.0",
-                "105.0",
-                "99.0",
-                "102.0",
-                "1000.0",
-                "102000.0",
-            ],
-            [
-                base_time + 3600000,
-                "102.0",
-                "110.0",
-                "101.0",
-                "108.0",
-                "1500.0",
-                "162000.0",
-            ],
-            [
-                base_time + 7200000,
-                "108.0",
-                "115.0",
-                "107.0",
-                "112.0",
-                "2000.0",
-                "224000.0",
-            ],
-        ]
+        candles = []
+        for i in range(48):
+            open_time = base_time + (i * 300000)  # 5 minute spacing
+            open_price = 100.0 + (i * 0.2)
+            close_price = open_price + 0.1
+            high_price = close_price + 0.2
+            low_price = open_price - 0.2
+            volume = 1000.0 + (i * 25.0)
+            quote_asset_volume = volume * close_price
+            candles.append(
+                [
+                    open_time,
+                    f"{open_price:.1f}",
+                    f"{high_price:.1f}",
+                    f"{low_price:.1f}",
+                    f"{close_price:.1f}",
+                    volume,
+                    quote_asset_volume,
+                ]
+            )
         return candles
 
     @pytest.fixture
     def sample_binance_candles(self):
         """Create sample Binance format candles for testing."""
         base_time = 1609459200000
-        candles = [
-            [
-                base_time,
-                "100.0",
-                "105.0",
-                "99.0",
-                "102.0",
-                "1000.0",
-                base_time + 3599000,
-                "102000.0",
-                10,
-                "500.0",
-                "51000.0",
-            ],
-            [
-                base_time + 3600000,
-                "102.0",
-                "110.0",
-                "101.0",
-                "108.0",
-                "1500.0",
-                base_time + 7199000,
-                "162000.0",
-                15,
-                "750.0",
-                "81000.0",
-            ],
-        ]
+        candles = []
+        for i in range(48):
+            open_time = base_time + (i * 300000)  # 5 minute spacing
+            open_price = 100.0 + (i * 0.2)
+            close_price = open_price + 0.1
+            high_price = close_price + 0.2
+            low_price = open_price - 0.2
+            volume = 1000.0 + (i * 25.0)
+            quote_asset_volume = volume * close_price
+            candles.append(
+                [
+                    open_time,
+                    f"{open_price:.1f}",
+                    f"{high_price:.1f}",
+                    f"{low_price:.1f}",
+                    f"{close_price:.1f}",
+                    volume,
+                    open_time + 299999,
+                    quote_asset_volume,
+                    10 + i,
+                    volume / 2,
+                    quote_asset_volume / 2,
+                ]
+            )
         return candles
 
     @pytest.fixture
