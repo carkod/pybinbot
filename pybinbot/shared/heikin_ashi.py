@@ -1,8 +1,5 @@
-import logging
-from time import time
 from typing import cast
 
-from numpy import isclose
 from pandas import DataFrame, to_numeric, concat
 from pandas.api.types import is_numeric_dtype
 from pandas import to_datetime
@@ -66,24 +63,6 @@ class HeikinAshi:
     ohlc_cols = ["open", "high", "low", "close"]
 
     REQUIRED_COLUMNS = kucoin_cols
-
-    PARITY_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000
-    _last_parity_check_ms_by_symbol: dict[str, int] = {}
-
-    @classmethod
-    def is_15m_parity_check_due(cls, parity_symbol: str | None) -> bool:
-        if parity_symbol is None:
-            logging.error(
-                "Skipping 15m parity check: symbol=%s interval=%s",
-                parity_symbol,
-                "15m",
-            )
-            return False
-
-        symbol_key = parity_symbol
-        now_ms = int(time() * 1000)
-        last_run_ms = cls._last_parity_check_ms_by_symbol.get(symbol_key, 0)
-        return now_ms - last_run_ms >= cls.PARITY_CHECK_INTERVAL_MS
 
     @staticmethod
     def normalize_timestamps(df: DataFrame, time_cols: list[str]) -> DataFrame:
@@ -229,119 +208,19 @@ class HeikinAshi:
         df_resampled = df_resampled.dropna(subset=["open", "high", "low", "close"])
         return df_resampled
 
-    def _run_15m_parity_check(
-        self,
-        exchange: ExchangeId,
-        synthetic_15m_df: DataFrame,
-        parity_exchange_15m_candles: list | None,
-        parity_symbol: str | None,
-    ) -> DataFrame | None:
-        if not parity_exchange_15m_candles:
-            return None
-
-        if parity_symbol is None:
-            logging.error(
-                "Skipping 15m parity check: symbol=%s interval=%s",
-                parity_symbol,
-                "15m",
-            )
-            return None
-
-        symbol_key = parity_symbol
-        if not self.is_15m_parity_check_due(parity_symbol):
-            return None
-
-        self._last_parity_check_ms_by_symbol[symbol_key] = int(time() * 1000)
-
-        exchange_15m_df = self._build_df_from_raw_candles(
-            exchange, parity_exchange_15m_candles
-        )
-        exchange_15m_df = self._prepare_numeric_ohlcv(exchange_15m_df)
-        exchange_15m_df = self._set_open_time_index(exchange_15m_df)
-
-        cols = ["open", "high", "low", "close", "volume"]
-        synthetic = self._set_open_time_index(synthetic_15m_df)[cols].copy()
-        exchange_direct = exchange_15m_df[cols].copy()
-
-        common_idx = synthetic.index.intersection(exchange_direct.index)
-        if common_idx.empty:
-            logging.warning(
-                "15m parity discrepancy detected for symbol=%s: no overlapping candle timestamps",
-                symbol_key,
-            )
-            return None
-
-        # Ignore the currently forming 15m bucket. Exchange-provided 15m candles may
-        # still be accumulating volume while the synthetic frame only includes closed 5m data.
-        current_bucket = to_datetime(int(time() * 1000), unit="ms").floor("15min")
-        common_idx = common_idx[common_idx < current_bucket]
-        if common_idx.empty:
-            return None
-
-        common_idx = common_idx[-50:]
-        synthetic = synthetic.loc[common_idx]
-        exchange_direct = exchange_direct.loc[common_idx]
-
-        tolerances = {
-            "open": (1e-8, 1e-8),
-            "high": (1e-8, 1e-8),
-            "low": (1e-8, 1e-8),
-            "close": (1e-8, 1e-8),
-            "volume": (1e-6, 1e-8),
-        }
-
-        for col in cols:
-            rtol, atol = tolerances[col]
-            matches = isclose(
-                synthetic[col].to_numpy(),
-                exchange_direct[col].to_numpy(),
-                rtol=rtol,
-                atol=atol,
-            )
-            if not matches.all():
-                mismatch_pos = int((~matches).argmax())
-                mismatch_ts = common_idx[mismatch_pos]
-                logging.warning(
-                    "15m parity discrepancy detected for symbol=%s: %s mismatch at %s (synthetic=%s exchange=%s)",
-                    symbol_key,
-                    col,
-                    mismatch_ts,
-                    synthetic.iloc[mismatch_pos][col],
-                    exchange_direct.iloc[mismatch_pos][col],
-                )
-                return exchange_15m_df.reset_index(drop=True)
-
-        return None
-
     def pre_process(
         self,
         exchange: ExchangeId,
         candles: list,
-        parity_symbol: str | None = None,
-        parity_exchange_15m_candles: list | None = None,
     ):
         raw_df = self._build_df_from_raw_candles(exchange, candles)
         raw_df = self._prepare_numeric_ohlcv(raw_df)
 
-        # 15m synthetic candles from 5m input for parity/backtest checks and strategy frame.
+        # Build higher timeframe candles from the raw input interval.
         raw_indexed = self._set_time_index(raw_df)
         synthetic_15m_df = self._build_15m_from_5m(raw_indexed)
         synthetic_1h_df = self._resample_from_5m(raw_indexed, "1h")
         synthetic_4h_df = self._resample_from_5m(raw_indexed, "4h")
-        parity_15m_df = self._run_15m_parity_check(
-            exchange=exchange,
-            synthetic_15m_df=synthetic_15m_df,
-            parity_exchange_15m_candles=parity_exchange_15m_candles,
-            parity_symbol=parity_symbol,
-        )
-        if parity_exchange_15m_candles:
-            exchange_15m_df = self._build_df_from_raw_candles(
-                exchange, parity_exchange_15m_candles
-            )
-            exchange_15m_df = self._prepare_numeric_ohlcv(exchange_15m_df)
-            synthetic_15m_df = exchange_15m_df
-        elif parity_15m_df is not None:
-            synthetic_15m_df = parity_15m_df
 
         # Base 5m Heikin Ashi dataframe.
         df = self.get_heikin_ashi(raw_df)

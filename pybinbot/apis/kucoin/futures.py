@@ -361,11 +361,22 @@ class KucoinFutures(KucoinRest):
         self,
         symbol: str,
         interval: str,
-        limit: int = 800,
+        limit: int | None = None,
         start_time=None,
         end_time=None,
     ) -> list[list]:
         interval_enum = KucoinKlineIntervals(interval)
+        is_five_minute_interval = interval_enum == KucoinKlineIntervals.FIVE_MINUTES
+        if limit is None:
+            limit = 800 if is_five_minute_interval else 500
+        if not is_five_minute_interval:
+            return self.get_klines(
+                symbol=symbol,
+                interval=interval,
+                limit=limit,
+                start_time=start_time,
+                end_time=end_time,
+            )
         interval_minutes = interval_enum.to_minutes()
         interval_ms = interval_minutes * 60 * 1000
 
@@ -485,7 +496,7 @@ class KucoinFutures(KucoinRest):
         """Place a Kucoin futures order using the official SDK.
 
         Args:
-            symbol: Futures contract symbol, e.g. "BTCUSDTM" or "BTC-USDT" depending on market.
+            symbol: Futures contract symbol, e.g. "XBTUSDTM" or "BTC-USDT" depending on market.
             side: "buy" or "sell" (case-insensitive).
             size: Contract size (lot size) as float.
             price: Limit price as float; required for limit orders.
