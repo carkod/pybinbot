@@ -20,15 +20,13 @@ class SignalsConsumer(BaseModel):
     Pydantic model for the signals consumer.
     """
 
-    type: str = Field(default="signal")
     date: str = Field(
         default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     )
+    direction: str = Field(default="", description="Signal direction: buy/sell")
+    score: float = Field(default=0, description="Score for ranking signals")
     spread: float = Field(default=0)
     current_price: float = Field(default=0)
-    msg: str = Field(
-        description="Message to be sent to Telegram, written in HTML string"
-    )
     symbol: str
     algo: str = Field(description="Algorithm name generating the signal")
     bot_strategy: Strategy = Field(default=Strategy.long)
