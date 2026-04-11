@@ -20,7 +20,6 @@ class SignalsConsumer(BaseModel):
     Pydantic model for the signals consumer.
     """
 
-    type: str = Field(default="signal")
     date: str = Field(
         default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     )
