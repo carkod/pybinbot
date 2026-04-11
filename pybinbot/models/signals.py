@@ -23,6 +23,8 @@ class SignalsConsumer(BaseModel):
     date: str = Field(
         default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     )
+    direction: str = Field(default="", description="Signal direction: buy/sell")
+    score: float = Field(default=0, description="Score for ranking signals")
     spread: float = Field(default=0)
     current_price: float = Field(default=0)
     symbol: str
