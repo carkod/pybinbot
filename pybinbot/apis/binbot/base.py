@@ -40,8 +40,6 @@ class BinbotApi:
         self.bb_login = f"{bb_base_url}/user/login"
 
         self.bb_symbols_raw = f"{bb_base_url}/account/symbols"
-        self.bb_bot_url = f"{bb_base_url}/bot"
-        self.bb_activate_bot_url = f"{bb_base_url}/bot/activate"
         self.bb_gainers_losers = f"{bb_base_url}/account/gainers-losers"
         self.bb_market_domination = f"{bb_base_url}/charts/market-domination"
         self.bb_top_gainers = f"{bb_base_url}/charts/top-gainers"
@@ -76,7 +74,10 @@ class BinbotApi:
         self.bb_one_symbol_url = f"{bb_base_url}/symbol"
 
         # bots
+        self.bb_bot_url = f"{bb_base_url}/bot"
+        self.bb_activate_bot_url = f"{bb_base_url}/bot/activate"
         self.bb_active_pairs = f"{bb_base_url}/bot/active-pairs"
+        self.bb_deactivate_bot_url = f"{bb_base_url}/bot/deactivate"
 
         # paper trading
         self.bb_test_bot_url = f"{bb_base_url}/paper-trading"
@@ -308,6 +309,10 @@ class BinbotApi:
 
     def activate_bot(self, bot_id: str) -> dict[Any, Any]:
         response = self.request(url=f"{self.bb_activate_bot_url}/{bot_id}")
+        return response
+
+    def deactivate_bot(self, bot_id: str) -> dict[Any, Any]:
+        response = self.request(url=f"{self.bb_deactivate_bot_url}/{bot_id}")
         return response
 
     def create_paper_bot(self, data: dict) -> dict[Any, Any]:
