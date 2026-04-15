@@ -40,8 +40,6 @@ class BinbotApi:
         self.bb_login = f"{bb_base_url}/user/login"
 
         self.bb_symbols_raw = f"{bb_base_url}/account/symbols"
-        self.bb_bot_url = f"{bb_base_url}/bot"
-        self.bb_activate_bot_url = f"{bb_base_url}/bot/activate"
         self.bb_gainers_losers = f"{bb_base_url}/account/gainers-losers"
         self.bb_market_domination = f"{bb_base_url}/charts/market-domination"
         self.bb_top_gainers = f"{bb_base_url}/charts/top-gainers"
@@ -76,7 +74,10 @@ class BinbotApi:
         self.bb_one_symbol_url = f"{bb_base_url}/symbol"
 
         # bots
+        self.bb_bot_url = f"{bb_base_url}/bot"
+        self.bb_activate_bot_url = f"{bb_base_url}/bot/activate"
         self.bb_active_pairs = f"{bb_base_url}/bot/active-pairs"
+        self.bb_deactivate_bot_url = f"{bb_base_url}/bot/deactivate"
 
         # paper trading
         self.bb_test_bot_url = f"{bb_base_url}/paper-trading"
@@ -170,6 +171,10 @@ class BinbotApi:
         response = self.request(url=f"{self.bb_one_symbol_url}/{symbol}")
         return response["data"]
 
+    def get_bot_by_symbol(self, symbol: str) -> dict:
+        response = self.request(url=f"{self.bb_bot_url}/symbol/{symbol}")
+        return response["data"]
+
     async def get_market_breadth(self, size=400):
         """
         Get market breadth data
@@ -200,6 +205,19 @@ class BinbotApi:
         data = self.request(url=self.bb_autotrade_settings_url)
         return data["data"]
 
+    def get_bots_by_name(
+        self, name: str, symbol: str, collection_name="bots"
+    ) -> list[dict]:
+        url = self.bb_bot_url
+        if collection_name == "paper_trading":
+            url = self.bb_test_bot_url
+
+        data = self.request(
+            url=url,
+            params={"name": name, "symbol": symbol},
+        )
+        return data["data"]
+
     def get_bots_by_status(
         self,
         start_date,
@@ -221,33 +239,32 @@ class BinbotApi:
         )
         return data["data"]
 
-    def submit_bot_event_logs(self, bot_id: str, message: str) -> dict:
+    def submit_bot_event_logs(self, bot_id: str, message: str | list[str]) -> dict:
+        """
+        Submit errors or logs to bot.logs field for debugging and monitoring purposes
+
+        it accepts both string or list (this is supported on Binbot's end)
+        """
+
+        errors = message if isinstance(message, str) else list(message)
         data = self.request(
             url=f"{self.bb_submit_errors}/{bot_id}",
             method="POST",
-            json={"errors": message},
+            json={"errors": errors},
         )
         return data
 
-    def submit_paper_trading_event_logs(self, bot_id: str, message: str) -> dict:
-        data = self.request(
-            url=f"{self.bb_pt_submit_errors_url}/{bot_id}",
-            method="POST",
-            json={"errors": message},
-        )
-        return data
+    def create_bot(self, data: dict) -> dict[Any, Any]:
+        response = self.request(url=self.bb_bot_url, method="POST", json=data)
+        return response
 
-    def add_to_blacklist(self, symbol: str, reason: str | None = None) -> dict:
-        payload = {"symbol": symbol, "reason": reason}
-        data = self.request(url=self.bb_blacklist_url, method="POST", json=payload)
-        return data
+    def activate_bot(self, bot_id: str) -> dict[Any, Any]:
+        response = self.request(url=f"{self.bb_activate_bot_url}/{bot_id}")
+        return response
 
-    def clean_margin_short(self, pair: str) -> dict:
-        """
-        Liquidate and disable margin_short trades
-        """
-        data = self.request(url=f"{self.bb_liquidation_url}/{pair}", method="DELETE")
-        return data
+    def deactivate_bot(self, bot_id: str) -> dict[Any, Any]:
+        response = self.request(url=f"{self.bb_deactivate_bot_url}/{bot_id}")
+        return response
 
     def delete_bot(self, bot_id: str | list[str]):
         bot_ids = []
@@ -258,57 +275,6 @@ class BinbotApi:
             url=f"{self.bb_bot_url}", method="DELETE", params={"id": bot_ids}
         )
         return data
-
-    def get_balances(self):
-        data = self.request(url=self.bb_balance_url)
-        return data
-
-    def get_balances_by_type(self):
-        data = self.request(url=self.bb_kucoin_balance_url)
-        return data
-
-    def get_available_fiat(
-        self, exchange: str, fiat: str = "USDT", is_margin=False
-    ) -> float:
-        if exchange == ExchangeId.KUCOIN.value:
-            all_balances = self.get_balances_by_type()
-            available_fiat = 0.0
-
-            for item in all_balances["data"]["balances"]:
-                if is_margin:
-                    if item == "margin":
-                        for key in all_balances["data"]["balances"]["margin"]:
-                            if key == fiat:
-                                available_fiat += float(
-                                    all_balances["data"]["balances"]["margin"][key]
-                                )
-                else:
-                    if item == "trade":
-                        for key in all_balances["data"]["balances"]["trade"]:
-                            if key == fiat:
-                                available_fiat += float(
-                                    all_balances["data"]["balances"]["trade"][key]
-                                )
-
-                if item == "main":
-                    for key in all_balances["data"]["balances"]["main"]:
-                        if key == fiat:
-                            available_fiat += float(
-                                all_balances["data"]["balances"]["main"][key]
-                            )
-
-            return float(all_balances["data"]["fiat_available"])
-        else:
-            all_balances = self.get_balances()
-            return float(all_balances["data"]["fiat_available"])
-
-    def create_bot(self, data: dict) -> dict[Any, Any]:
-        response = self.request(url=self.bb_bot_url, method="POST", json=data)
-        return response
-
-    def activate_bot(self, bot_id: str) -> dict[Any, Any]:
-        response = self.request(url=f"{self.bb_activate_bot_url}/{bot_id}")
-        return response
 
     def create_paper_bot(self, data: dict) -> dict[Any, Any]:
         response = self.request(url=self.bb_test_bot_url, method="POST", json=data)
@@ -366,6 +332,69 @@ class BinbotApi:
                     exclusion_list.append(s["id"])
 
         return exclusion_list
+
+    def submit_paper_trading_event_logs(self, bot_id: str, message: str) -> dict:
+        data = self.request(
+            url=f"{self.bb_pt_submit_errors_url}/{bot_id}",
+            method="POST",
+            json={"errors": message},
+        )
+        return data
+
+    def add_to_blacklist(self, symbol: str, reason: str | None = None) -> dict:
+        payload = {"symbol": symbol, "reason": reason}
+        data = self.request(url=self.bb_blacklist_url, method="POST", json=payload)
+        return data
+
+    def clean_margin_short(self, pair: str) -> dict:
+        """
+        Liquidate and disable margin_short trades
+        """
+        data = self.request(url=f"{self.bb_liquidation_url}/{pair}", method="DELETE")
+        return data
+
+    def get_balances(self):
+        data = self.request(url=self.bb_balance_url)
+        return data
+
+    def get_balances_by_type(self):
+        data = self.request(url=self.bb_kucoin_balance_url)
+        return data
+
+    def get_available_fiat(
+        self, exchange: str, fiat: str = "USDT", is_margin=False
+    ) -> float:
+        if exchange == ExchangeId.KUCOIN.value:
+            all_balances = self.get_balances_by_type()
+            available_fiat = 0.0
+
+            for item in all_balances["data"]["balances"]:
+                if is_margin:
+                    if item == "margin":
+                        for key in all_balances["data"]["balances"]["margin"]:
+                            if key == fiat:
+                                available_fiat += float(
+                                    all_balances["data"]["balances"]["margin"][key]
+                                )
+                else:
+                    if item == "trade":
+                        for key in all_balances["data"]["balances"]["trade"]:
+                            if key == fiat:
+                                available_fiat += float(
+                                    all_balances["data"]["balances"]["trade"][key]
+                                )
+
+                if item == "main":
+                    for key in all_balances["data"]["balances"]["main"]:
+                        if key == fiat:
+                            available_fiat += float(
+                                all_balances["data"]["balances"]["main"][key]
+                            )
+
+            return float(all_balances["data"]["fiat_available"])
+        else:
+            all_balances = self.get_balances()
+            return float(all_balances["data"]["fiat_available"])
 
     async def get_top_gainers(self):
         """
