@@ -26,9 +26,6 @@ class SignalsConsumer(BaseModel):
     )
     spread: float = Field(default=0)
     current_price: float = Field(default=0)
-    msg: str = Field(
-        description="Message to be sent to Telegram, written in HTML string"
-    )
     symbol: str
     algo: str = Field(description="Algorithm name generating the signal")
     bot_strategy: Strategy = Field(default=Strategy.long)

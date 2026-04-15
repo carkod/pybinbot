@@ -111,6 +111,30 @@ class Indicators:
         return df
 
     @staticmethod
+    def mfi(df: TypedDataFrame[KlineSchema], window: int = 14) -> float:
+        """
+        Money Flow Index (MFI) using the latest `window` candles.
+
+        Requires 'high', 'low', 'close', and 'volume' columns.
+        Returns the latest MFI value in the 0-100 range.
+        """
+        typical_price = (df["high"] + df["low"] + df["close"]) / 3
+        raw_money_flow = typical_price * df["volume"]
+
+        tp_change = typical_price.diff()
+        positive_flow = raw_money_flow.where(tp_change > 0, 0.0)
+        negative_flow = raw_money_flow.where(tp_change < 0, 0.0)
+
+        positive_sum = positive_flow.rolling(window).sum()
+        negative_sum = negative_flow.rolling(window).sum()
+
+        money_ratio = positive_sum / negative_sum.replace(0, float("nan"))
+        raw_mfi = 100 - (100 / (1 + money_ratio))
+        mfi = raw_mfi.fillna(100.0)
+
+        return float(mfi.iloc[-1])
+
+    @staticmethod
     def ma_spreads(df: TypedDataFrame[KlineSchema]) -> TypedDataFrame[KlineSchema]:
         """
         Calculates spread based on bollinger bands,
