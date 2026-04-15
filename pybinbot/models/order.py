@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field
-
 from pybinbot.shared.enums import DealType, OrderStatus
 from pybinbot.shared.types import Amount
 
