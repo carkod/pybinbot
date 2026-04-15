@@ -239,11 +239,18 @@ class BinbotApi:
         )
         return data["data"]
 
-    def submit_bot_event_logs(self, bot_id: str, message: str) -> dict:
+    def submit_bot_event_logs(self, bot_id: str, message: str | list[str]) -> dict:
+        """
+        Submit errors or logs to bot.logs field for debugging and monitoring purposes
+
+        it accepts both string or list (this is supported on Binbot's end)
+        """
+        
+        errors = message if isinstance(message, str) else list(message)
         data = self.request(
             url=f"{self.bb_submit_errors}/{bot_id}",
             method="POST",
-            json={"errors": message},
+            json={"errors": errors},
         )
         return data
 
