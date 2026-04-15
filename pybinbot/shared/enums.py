@@ -10,13 +10,14 @@ class DealType(str, Enum):
     short_buy = "short_buy"
     margin_short = "margin_short"
     panic_close = "panic_close"
-    trailling_profit = "trailling_profit"
+    trailing_profit = "trailing_profit"
     conversion = "conversion"  # converts one crypto to another
+    algorithmic_close = "algorithmic_close"
 
 
 class CloseConditions(str, Enum):
-    dynamic_trailling = "dynamic_trailling"
-    # No trailling, standard stop loss
+    dynamic_trailing = "dynamic_trailing"
+    # No trailing, standard stop loss
     timestamp = "timestamp"
     # binbot-research param (self.market_trend_reversal)
     market_reversal = "market_reversal"
@@ -68,9 +69,13 @@ class Status(str, Enum):
     error = "error"
 
 
-class Strategy(str, Enum):
+class Position(str, Enum):
     long = "long"
-    margin_short = "margin_short"
+    short = "short"
+
+
+# Backward-compatible alias
+Strategy = Position
 
 
 class OrderType(str, Enum):

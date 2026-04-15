@@ -12,7 +12,7 @@ def ensure_float(value: str | int | float) -> float:
     return value
 
 
-def supress_trailling(value: str | float | int) -> float:
+def supress_trailing(value: str | float | int) -> float:
     """
     Supress trailing 0s without changing the numeric value.
 

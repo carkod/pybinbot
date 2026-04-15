@@ -59,14 +59,14 @@ class DealModel(BaseModel):
     base_order_size: Amount = Field(default=0, gt=-1)
     current_price: Amount = Field(default=0)
     take_profit_price: Amount = Field(default=0)
-    trailling_stop_loss_price: Amount = Field(
+    trailing_stop_loss_price: Amount = Field(
         default=0,
         description=(
-            "take_profit but for trailling, to avoid confusion, "
-            "trailling_profit_price always be > trailling_stop_loss_price"
+            "take_profit but for trailing, to avoid confusion, "
+            "trailing_profit_price always be > trailing_stop_loss_price"
         ),
     )
-    trailling_profit_price: Amount = Field(default=0)
+    trailing_profit_price: Amount = Field(default=0)
     stop_loss_price: Amount = Field(default=0)
     total_interests: float = Field(default=0, gt=-1)
     total_commissions: float = Field(default=0, gt=-1)
