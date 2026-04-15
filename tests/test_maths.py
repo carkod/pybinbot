@@ -7,10 +7,10 @@ def test_ensure_float():
     assert maths.ensure_float(2.5) == 2.5
 
 
-def test_supress_trailling():
-    assert maths.supress_trailling("3.14000") == 3.14
-    assert maths.supress_trailling(2.05e-5) == 0.0000205
-    assert maths.supress_trailling(3.140000004) == 3.140000004
+def test_supress_trailing():
+    assert maths.supress_trailing("3.14000") == 3.14
+    assert maths.supress_trailing(2.05e-5) == 0.0000205
+    assert maths.supress_trailing(3.140000004) == 3.140000004
 
 
 def test_round_numbers():

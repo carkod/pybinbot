@@ -12,7 +12,7 @@ from pybinbot.shared.maths import (
     round_numbers_ceiling,
     round_numbers_floor,
     supress_notation,
-    supress_trailling,
+    supress_trailing,
     zero_remainder,
 )
 from pybinbot.shared.timestamps import (
@@ -38,6 +38,7 @@ from pybinbot.shared.enums import (
     OrderSide,
     OrderStatus,
     OrderType,
+    Position,
     QuoteAssets,
     Status,
     Strategy,
@@ -127,7 +128,7 @@ __all__ = [
     "convert_to_kucoin_symbol",
     "convert_from_kucoin_symbol",
     # maths helpers
-    "supress_trailling",
+    "supress_trailing",
     "round_numbers",
     "round_numbers_ceiling",
     "round_numbers_floor",
@@ -152,6 +153,7 @@ __all__ = [
     "DealType",
     "BinanceOrderModel",
     "Status",
+    "Position",
     "Strategy",
     "OrderType",
     "TimeInForce",

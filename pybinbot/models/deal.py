@@ -14,14 +14,14 @@ class DealBase(BaseModel):
         description="Current price of the symbol. This can come from a ticker or in Futures this would be the mark price",
     )
     take_profit_price: Amount = Field(default=0)
-    trailling_stop_loss_price: Amount = Field(
+    trailing_stop_loss_price: Amount = Field(
         default=0,
         description=(
-            "take_profit but for trailling, to avoid confusion, "
-            "trailling_profit_price always be > trailling_stop_loss_price"
+            "take_profit but for trailing, to avoid confusion, "
+            "trailing_profit_price always be > trailing_stop_loss_price"
         ),
     )
-    trailling_profit_price: Amount = Field(default=0)
+    trailing_profit_price: Amount = Field(default=0)
     stop_loss_price: Amount = Field(default=0)
     total_interests: float = Field(default=0, gt=-1)
     total_commissions: float = Field(default=0, gt=-1)

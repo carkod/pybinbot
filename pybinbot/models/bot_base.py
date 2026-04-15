@@ -4,9 +4,9 @@ from pybinbot.shared.enums import (
     BinanceKlineIntervals,
     CloseConditions,
     MarketType,
+    Position,
     QuoteAssets,
     Status,
-    Strategy,
 )
 from pybinbot.shared.timestamps import timestamp, ts_to_humandate
 from pybinbot.shared.types import Amount
@@ -22,7 +22,7 @@ class BotBase(BaseModel):
     candlestick_interval: BinanceKlineIntervals = Field(
         default=BinanceKlineIntervals.fifteen_minutes
     )
-    close_condition: CloseConditions = Field(default=CloseConditions.dynamic_trailling)
+    close_condition: CloseConditions = Field(default=CloseConditions.dynamic_trailing)
     cooldown: int = Field(
         default=0,
         ge=0,
@@ -30,7 +30,7 @@ class BotBase(BaseModel):
     )
     created_at: float = Field(default_factory=timestamp)
     updated_at: float = Field(default_factory=timestamp)
-    dynamic_trailling: bool = Field(default=False)
+    dynamic_trailing: bool = Field(default=False)
     logs: list = Field(default=[])
     mode: str = Field(default="manual")
     market_type: MarketType = Field(default=MarketType.SPOT)
@@ -47,15 +47,15 @@ class BotBase(BaseModel):
         description="Autoswitch from long to short or short to long strategy",
     )
     take_profit: Amount = Field(default=0, ge=-1, le=101)
-    trailling: bool = Field(default=False)
-    trailling_deviation: Amount = Field(
+    trailing: bool = Field(default=False)
+    trailing_deviation: Amount = Field(
         default=0,
         ge=-1,
         le=101,
-        description="Trailling activation (first take profit hit)",
+        description="Trailing activation (first take profit hit)",
     )
-    trailling_profit: Amount = Field(default=0, ge=-1, le=101)
-    strategy: Strategy = Field(default=Strategy.long)
+    trailing_profit: Amount = Field(default=0, ge=-1, le=101)
+    strategy: Position = Field(default=Position.long)
     model_config = {
         "from_attributes": True,
         "use_enum_values": True,
@@ -68,11 +68,11 @@ class BotBase(BaseModel):
                     "quote_asset": "USDC",
                     "fiat_order_size": 15,
                     "candlestick_interval": "15m",
-                    "close_condition": "dynamic_trailling",
+                    "close_condition": "dynamic_trailing",
                     "cooldown": 0,
                     "created_at": 1702999999.0,
                     "updated_at": 1702999999.0,
-                    "dynamic_trailling": False,
+                    "dynamic_trailing": False,
                     "logs": [],
                     "mode": "manual",
                     "market_type": "SPOT",
@@ -80,9 +80,9 @@ class BotBase(BaseModel):
                     "status": "inactive",
                     "stop_loss": 0,
                     "take_profit": 2.3,
-                    "trailling": True,
-                    "trailling_deviation": 0.63,
-                    "trailling_profit": 2.3,
+                    "trailing": True,
+                    "trailing_deviation": 0.63,
+                    "trailing_profit": 2.3,
                     "margin_short_reversal": False,
                     "strategy": "long",
                 }
