@@ -7,7 +7,6 @@ from pybinbot.shared.enums import (
     Position,
     QuoteAssets,
     Status,
-    Strategy,
 )
 from pybinbot.shared.timestamps import timestamp, ts_to_humandate
 from pybinbot.shared.types import Amount

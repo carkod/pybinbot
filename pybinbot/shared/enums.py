@@ -6,13 +6,12 @@ class DealType(str, Enum):
     base_order = "base_order"
     take_profit = "take_profit"
     stop_loss = "stop_loss"
-    short_sell = "short_sell"
-    short_buy = "short_buy"
-    margin_short = "margin_short"
+    margin_short = "margin_short"  # deprecated
     panic_close = "panic_close"
     trailing_profit = "trailing_profit"
     conversion = "conversion"  # converts one crypto to another
     algorithmic_close = "algorithmic_close"
+    short = "short"  # replaces margin_short for spot, margin and futures
 
 
 class CloseConditions(str, Enum):

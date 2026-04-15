@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from pybinbot.shared.enums import MarketType, Position, Strategy
+from pybinbot.shared.enums import MarketType, Position
 from pandera.typing import Series
 from pandera.pandas import DataFrameModel
 
