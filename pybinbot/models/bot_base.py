@@ -55,7 +55,7 @@ class BotBase(BaseModel):
         description="Trailing activation (first take profit hit)",
     )
     trailing_profit: Amount = Field(default=0, ge=-1, le=101)
-    strategy: Position = Field(default=Position.long)
+    position: Position = Field(default=Position.long)
     model_config = {
         "from_attributes": True,
         "use_enum_values": True,
@@ -84,7 +84,7 @@ class BotBase(BaseModel):
                     "trailing_deviation": 0.63,
                     "trailing_profit": 2.3,
                     "margin_short_reversal": False,
-                    "strategy": "long",
+                    "position": "long",
                 }
             ],
         },
