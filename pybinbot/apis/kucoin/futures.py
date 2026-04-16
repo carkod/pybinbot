@@ -66,6 +66,11 @@ from kucoin_universal_sdk.generate.futures.order.model_batch_cancel_orders_req i
 from kucoin_universal_sdk.generate.futures.order.model_batch_cancel_orders_resp import (
     BatchCancelOrdersResp,
 )
+from kucoin_universal_sdk.generate.account.deposit import (
+    GetDepositHistoryReq,
+    GetDepositHistoryReqBuilder,
+    GetDepositHistoryResp,
+)
 
 from pybinbot.shared.maths import round_numbers
 
@@ -717,3 +722,44 @@ class KucoinFutures(KucoinRest):
         if info.open_interest is None:
             raise ValueError(f"open_interest not available for symbol {symbol}")
         return info.open_interest
+
+    def get_deposit_history(
+        self,
+        currency: str | None = None,
+        status: GetDepositHistoryReq.StatusEnum | None = None,
+        start_at: int | None = None,
+        end_at: int | None = None,
+        current_page: int | None = None,
+        page_size: int | None = None,
+    ) -> GetDepositHistoryResp:
+        """
+        Get deposit history.
+
+        Args:
+            currency: Filter by currency (optional).
+            status: Filter by status - PROCESSING, SUCCESS, or FAILURE (optional).
+            start_at: Start time in milliseconds (optional).
+            end_at: End time in milliseconds (optional).
+            current_page: Current request page (optional).
+            page_size: Number of results per request, min 10, max 500 (optional).
+
+        Returns:
+            GetDepositHistoryResp with paginated deposit history items.
+        """
+        builder = GetDepositHistoryReqBuilder()
+
+        if currency is not None:
+            builder = builder.set_currency(currency)
+        if status is not None:
+            builder = builder.set_status(status)
+        if start_at is not None:
+            builder = builder.set_start_at(start_at)
+        if end_at is not None:
+            builder = builder.set_end_at(end_at)
+        if current_page is not None:
+            builder = builder.set_current_page(current_page)
+        if page_size is not None:
+            builder = builder.set_page_size(page_size)
+
+        req = builder.build()
+        return self.deposit_api.get_deposit_history(req)

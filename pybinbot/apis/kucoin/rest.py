@@ -49,6 +49,7 @@ class KucoinRest:
             .set_key(self.key)
             .set_secret(self.secret)
             .set_passphrase(self.passphrase)
+            .set_spot_endpoint(GLOBAL_API_ENDPOINT)
             .set_futures_endpoint(GLOBAL_FUTURES_API_ENDPOINT)
             .set_transport_option(self.http_transport_option)
             .build()
@@ -64,3 +65,6 @@ class KucoinRest:
         self.futures_market_api = self.futures_service.get_market_api()
         self.futures_order_api = self.futures_service.get_order_api()
         self.futures_positions_api = self.futures_service.get_positions_api()
+        self.deposit_api = (
+            self.futures_client.rest_service().get_account_service().get_deposit_api()
+        )
