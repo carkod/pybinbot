@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 from pandera.typing import DataFrame as TypedDataFrame
 
-from pybinbot.shared.heikin_ashi import HeikinAshi
+from pybinbot.shared.heikin_ashi import HeikinAshi, RawCandles
 from pybinbot.shared.enums import ExchangeId
 from pybinbot.models.signals import KlineSchema
 
@@ -342,3 +342,137 @@ class TestHeikinAshi:
         assert id(result) == original_id
         # Result should have reset index
         assert result.index.tolist() == [0, 1, 2]
+
+
+class TestRawCandles:
+    """Test suite for RawCandles class."""
+
+    @pytest.fixture
+    def raw_candles(self) -> RawCandles:
+        """Create a RawCandles instance for testing."""
+        return RawCandles()
+
+    @pytest.fixture
+    def sample_kucoin_candles(self):
+        """Create sample KuCoin format candles for testing."""
+        base_time = 1609459200000  # 2021-01-01 00:00:00 UTC in milliseconds
+        candles = []
+        for i in range(48):
+            open_time = base_time + (i * 300000)  # 5 minute spacing
+            open_price = 100.0 + (i * 0.2)
+            close_price = open_price + 0.1
+            high_price = close_price + 0.2
+            low_price = open_price - 0.2
+            volume = 1000.0 + (i * 25.0)
+            quote_asset_volume = volume * close_price
+            candles.append(
+                [
+                    open_time,
+                    f"{open_price:.1f}",
+                    f"{high_price:.1f}",
+                    f"{low_price:.1f}",
+                    f"{close_price:.1f}",
+                    volume,
+                    quote_asset_volume,
+                ]
+            )
+        return candles
+
+    @pytest.fixture
+    def sample_binance_candles(self):
+        """Create sample Binance format candles for testing."""
+        base_time = 1609459200000
+        candles = []
+        for i in range(48):
+            open_time = base_time + (i * 300000)  # 5 minute spacing
+            open_price = 100.0 + (i * 0.2)
+            close_price = open_price + 0.1
+            high_price = close_price + 0.2
+            low_price = open_price - 0.2
+            volume = 1000.0 + (i * 25.0)
+            quote_asset_volume = volume * close_price
+            candles.append(
+                [
+                    open_time,
+                    f"{open_price:.1f}",
+                    f"{high_price:.1f}",
+                    f"{low_price:.1f}",
+                    f"{close_price:.1f}",
+                    volume,
+                    open_time + 299999,
+                    quote_asset_volume,
+                    10 + i,
+                    volume / 2,
+                    quote_asset_volume / 2,
+                ]
+            )
+        return candles
+
+    def test_raw_candles_is_subclass_of_heikin_ashi(self, raw_candles: RawCandles):
+        """Test that RawCandles is a subclass of HeikinAshi."""
+        assert isinstance(raw_candles, HeikinAshi)
+
+    def test_raw_candles_instantiation(self, raw_candles: RawCandles):
+        """Test that RawCandles can be instantiated."""
+        assert raw_candles is not None
+        assert isinstance(raw_candles, RawCandles)
+
+    def test_pre_process_returns_four_dataframes(
+        self, raw_candles: RawCandles, sample_kucoin_candles
+    ):
+        """Test that pre_process returns four DataFrames."""
+        result = raw_candles.pre_process(ExchangeId.KUCOIN, sample_kucoin_candles)
+        assert len(result) == 4
+        df, df_15m, df_1h, df_4h = result
+        assert isinstance(df, DataFrame)
+        assert isinstance(df_15m, DataFrame)
+        assert isinstance(df_1h, DataFrame)
+        assert isinstance(df_4h, DataFrame)
+
+    def test_pre_process_kucoin_has_ohlc_columns(
+        self, raw_candles: RawCandles, sample_kucoin_candles
+    ):
+        """Test that pre_process output contains OHLC columns."""
+        df, df_15m, df_1h, df_4h = raw_candles.pre_process(
+            ExchangeId.KUCOIN, sample_kucoin_candles
+        )
+        for frame in (df, df_15m, df_1h, df_4h):
+            assert "open" in frame.columns
+            assert "high" in frame.columns
+            assert "low" in frame.columns
+            assert "close" in frame.columns
+
+    def test_pre_process_binance(
+        self, raw_candles: RawCandles, sample_binance_candles
+    ):
+        """Test pre_process with Binance candles."""
+        df, df_15m, df_1h, df_4h = raw_candles.pre_process(
+            ExchangeId.BINANCE, sample_binance_candles
+        )
+        assert not df.empty
+        assert not df_15m.empty
+        assert not df_1h.empty
+
+    def test_pre_process_returns_raw_ohlc_not_heikin_ashi(
+        self, raw_candles: RawCandles, sample_kucoin_candles
+    ):
+        """Test that RawCandles.pre_process returns untransformed OHLC values."""
+        heikin_ashi = HeikinAshi()
+        df_raw, *_ = raw_candles.pre_process(ExchangeId.KUCOIN, sample_kucoin_candles)
+        df_ha, *_ = heikin_ashi.pre_process(ExchangeId.KUCOIN, sample_kucoin_candles)
+
+        # Raw candles must NOT equal the HA-transformed candles (HA changes OHLC)
+        assert not df_raw["close"].equals(df_ha["close"])
+        assert not df_raw["open"].equals(df_ha["open"])
+
+    def test_pre_process_raw_close_matches_original(
+        self, raw_candles: RawCandles, sample_kucoin_candles
+    ):
+        """Test that close values in raw output match the original input candles."""
+        df, *_ = raw_candles.pre_process(ExchangeId.KUCOIN, sample_kucoin_candles)
+
+        # The close prices from input candles (column index 4 in KuCoin futures format)
+        expected_closes = [float(c[4]) for c in sample_kucoin_candles]
+        actual_closes = df["close"].tolist()
+
+        assert actual_closes == pytest.approx(expected_closes, rel=1e-6)

@@ -48,7 +48,7 @@ from pybinbot.shared.enums import (
     MarketType,
 )
 from pybinbot.shared.indicators import Indicators
-from pybinbot.shared.heikin_ashi import HeikinAshi
+from pybinbot.shared.heikin_ashi import HeikinAshi, RawCandles
 from pybinbot.shared.logging_config import configure_logging
 from pybinbot.shared.types import Amount, CombinedApis
 from pybinbot.shared.cache import cache
@@ -147,6 +147,7 @@ __all__ = [
     # dataframes
     "Indicators",
     "HeikinAshi",
+    "RawCandles",
     # enums
     "CloseConditions",
     "KafkaTopics",

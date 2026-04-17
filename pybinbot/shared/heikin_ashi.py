@@ -316,3 +316,36 @@ class HeikinAshi:
         work.loc[:, "close"] = ha_close
 
         return cast(TypedDataFrame[KlineSchema], work)
+
+
+class RawCandles(HeikinAshi):
+    """
+    Performs the same pre-processing as HeikinAshi but returns raw OHLC candles
+    instead of Heikin Ashi-transformed candles.
+
+    All DataFrame construction, numeric coercion, and resampling to higher
+    timeframes (15m, 1h, 4h) are identical to HeikinAshi.  The only difference
+    is that the OHLC values are left untransformed.
+    """
+
+    def pre_process(
+        self,
+        exchange: ExchangeId,
+        candles: list,
+    ):
+        raw_df = self._build_df_from_raw_candles(exchange, candles)
+        raw_df = self._prepare_numeric_ohlcv(raw_df)
+
+        # Build higher timeframe candles from the raw input interval.
+        raw_indexed = self._set_time_index(raw_df)
+        synthetic_15m_df = self._build_15m_from_5m(raw_indexed)
+        synthetic_1h_df = self._resample_from_5m(raw_indexed, "1h")
+        synthetic_4h_df = self._resample_from_5m(raw_indexed, "4h")
+
+        # Return raw (untransformed) dataframes at each timeframe.
+        df = cast(TypedDataFrame[KlineSchema], raw_indexed)
+        df_15m = cast(TypedDataFrame[KlineSchema], synthetic_15m_df)
+        df_1h = cast(TypedDataFrame[KlineSchema], synthetic_1h_df)
+        df_4h = cast(TypedDataFrame[KlineSchema], synthetic_4h_df)
+
+        return df, df_15m, df_1h, df_4h
