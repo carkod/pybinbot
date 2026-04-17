@@ -262,8 +262,13 @@ class BinbotApi:
         response = self.request(url=f"{self.bb_activate_bot_url}/{bot_id}")
         return response
 
-    def deactivate_bot(self, bot_id: str) -> dict[Any, Any]:
-        response = self.request(url=f"{self.bb_deactivate_bot_url}/{bot_id}")
+    def deactivate_bot(
+        self, bot_id: str, algorithmic_close: bool = False
+    ) -> dict[Any, Any]:
+        response = self.request(
+            url=f"{self.bb_deactivate_bot_url}/{bot_id}",
+            params={"algorithmic_close": algorithmic_close},
+        )
         return response
 
     def delete_bot(self, bot_id: str | list[str]):
