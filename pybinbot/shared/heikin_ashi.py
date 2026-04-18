@@ -7,7 +7,6 @@ from pandera.typing import DataFrame as TypedDataFrame
 from pybinbot.models.signals import KlineSchema
 from pybinbot.shared.enums import ExchangeId
 from pybinbot.shared.candles import Candles
-from pybinbot.shared.indicators import Indicators
 
 
 class HeikinAshi(Candles):
@@ -64,25 +63,22 @@ class HeikinAshi(Candles):
 
     def pre_process(
         self,
-    ) -> tuple[TypedDataFrame[KlineSchema], TypedDataFrame[KlineSchema]]:
-        """Build and return Heikin Ashi frames at the input interval and 1-hour.
+    ) -> TypedDataFrame[KlineSchema]:
+        """Build and return a Heikin Ashi frame at the input interval.
+
+        Higher-timeframe bars can be obtained by calling
+        ``resample(df, interval)`` on the raw indexed frame and then passing
+        the result through ``get_heikin_ashi``.  Bollinger-band columns can be
+        added by passing the result to ``Indicators.bollinguer_spreads(df)``.
 
         Returns:
-            df:     Time-indexed HA DataFrame at the interval of the input candles.
-            df_1h:  Time-indexed HA DataFrame resampled to 1-hour bars.
+            df: Time-indexed HA DataFrame at the interval of the input candles.
         """
         raw_df = self._build_df_from_raw_candles(self.exchange, self.candles)
         raw_df = self._prepare_numeric_ohlcv(raw_df)
 
-        raw_indexed = self._set_time_index(raw_df)
-        synthetic_1h_df = self.resample(raw_indexed, "1h")
-
         df = self.get_heikin_ashi(raw_df)
         df = cast(TypedDataFrame[KlineSchema], self._set_time_index(df))
-        df = Indicators.bollinguer_spreads(df)
 
-        df_1h = self.get_heikin_ashi(synthetic_1h_df.reset_index(drop=True))
-        df_1h = cast(TypedDataFrame[KlineSchema], self._set_time_index(df_1h))
-
-        return df, df_1h
+        return df
 

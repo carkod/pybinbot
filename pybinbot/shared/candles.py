@@ -7,7 +7,6 @@ from pandas import to_datetime
 from pandera.typing import DataFrame as TypedDataFrame
 from pybinbot.models.signals import KlineSchema
 from pybinbot.shared.enums import ExchangeId
-from pybinbot.shared.indicators import Indicators
 
 
 class Candles:
@@ -18,9 +17,11 @@ class Candles:
     normalising timestamps, coercing numeric columns, setting time indices,
     and resampling to higher timeframes.
 
-    The ``pre_process`` method returns the raw OHLC candles together with
-    a 1-hour resampled frame.  Subclasses (e.g. ``HeikinAshi``) override
-    ``pre_process`` to apply additional transformations.
+    The ``pre_process`` method returns the raw time-indexed OHLC candles.
+    Callers can then invoke ``resample(df, interval)`` for higher-timeframe
+    bars and ``Indicators.bollinguer_spreads(df)`` for Bollinger-band columns.
+    Subclasses (e.g. ``HeikinAshi``) override ``pre_process`` to apply
+    additional transformations.
     """
 
     binance_cols = [
@@ -215,22 +216,23 @@ class Candles:
 
     def pre_process(
         self,
-    ) -> tuple[TypedDataFrame[KlineSchema], TypedDataFrame[KlineSchema]]:
-        """Build and return raw OHLC frames at the input interval and 1-hour.
+    ) -> TypedDataFrame[KlineSchema]:
+        """Build and return a time-indexed OHLC frame at the input interval.
+
+        Higher-timeframe bars can be obtained by calling
+        ``resample(df, interval)`` on the returned frame.  Bollinger-band
+        columns can be added by passing the result to
+        ``Indicators.bollinguer_spreads(df)``.
 
         Returns:
-            df:     Time-indexed DataFrame at the interval of the input candles.
-            df_1h:  Time-indexed DataFrame resampled to 1-hour bars.
+            df: Time-indexed DataFrame at the interval of the input candles.
         """
         raw_df = self._build_df_from_raw_candles(self.exchange, self.candles)
         raw_df = self._prepare_numeric_ohlcv(raw_df)
 
         raw_indexed = self._set_time_index(raw_df)
-        df_1h = self.resample(raw_indexed, "1h")
 
-        df = Indicators.bollinguer_spreads(cast(TypedDataFrame[KlineSchema], raw_indexed))
-
-        return df, cast(TypedDataFrame[KlineSchema], df_1h)
+        return cast(TypedDataFrame[KlineSchema], raw_indexed)
 
     @staticmethod
     def post_process(df: TypedDataFrame[KlineSchema]) -> TypedDataFrame[KlineSchema]:

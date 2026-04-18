@@ -122,27 +122,24 @@ class TestCandles:
         assert "open" in candles_kucoin.numeric_cols
         assert "close" in candles_kucoin.numeric_cols
 
-    def test_pre_process_returns_two_dataframes(self, candles_kucoin: Candles):
-        df, df_1h = candles_kucoin.pre_process()
+    def test_pre_process_returns_dataframe(self, candles_kucoin: Candles):
+        df = candles_kucoin.pre_process()
         assert isinstance(df, DataFrame)
-        assert isinstance(df_1h, DataFrame)
         assert not df.empty
-        assert not df_1h.empty
 
     def test_pre_process_kucoin_has_ohlc_columns(self, candles_kucoin: Candles):
-        df, df_1h = candles_kucoin.pre_process()
-        for frame in (df, df_1h):
-            for col in ("open", "high", "low", "close"):
-                assert col in frame.columns
+        df = candles_kucoin.pre_process()
+        for col in ("open", "high", "low", "close"):
+            assert col in df.columns
 
     def test_pre_process_binance(self, binance_candles):
         obj = Candles(ExchangeId.BINANCE, binance_candles)
-        df, df_1h = obj.pre_process()
+        df = obj.pre_process()
         assert not df.empty
-        assert not df_1h.empty
 
-    def test_pre_process_1h_has_ohlc_columns(self, candles_kucoin: Candles):
-        _, df_1h = candles_kucoin.pre_process()
+    def test_resample_1h_has_ohlc_columns(self, candles_kucoin: Candles):
+        df = candles_kucoin.pre_process()
+        df_1h = candles_kucoin.resample(df, "1h")
         assert "open" in df_1h.columns
         assert "close" in df_1h.columns
         assert "open_time" in df_1h.columns
@@ -397,49 +394,51 @@ class TestHeikinAshi:
         assert id(result) == original_id
         assert result.index.tolist() == [0, 1, 2]
 
-    def test_pre_process_returns_two_dataframes(self, heikin_ashi: HeikinAshi):
+    def test_pre_process_returns_dataframe(self, heikin_ashi: HeikinAshi):
         result = heikin_ashi.pre_process()
-        assert len(result) == 2
-        df, df_1h = result
-        assert isinstance(df, DataFrame)
-        assert isinstance(df_1h, DataFrame)
-        assert not df.empty
-        assert not df_1h.empty
+        assert isinstance(result, DataFrame)
+        assert not result.empty
 
     def test_pre_process_kucoin_has_ohlc_columns(self, heikin_ashi: HeikinAshi):
-        df, df_1h = heikin_ashi.pre_process()
-        for frame in (df, df_1h):
-            for col in ("open", "high", "low", "close"):
-                assert col in frame.columns
+        df = heikin_ashi.pre_process()
+        for col in ("open", "high", "low", "close"):
+            assert col in df.columns
 
     def test_pre_process_binance(self, binance_candles):
         ha = HeikinAshi(ExchangeId.BINANCE, binance_candles)
-        df, df_1h = ha.pre_process()
+        df = ha.pre_process()
         assert not df.empty
-        assert not df_1h.empty
 
-    def test_pre_process_1h_has_ohlc_columns(self, heikin_ashi: HeikinAshi):
-        _, df_1h = heikin_ashi.pre_process()
+    def test_resample_1h_has_ohlc_columns(self, heikin_ashi: HeikinAshi, kucoin_candles):
+        raw = Candles(ExchangeId.KUCOIN, kucoin_candles)
+        raw_df = raw.pre_process()
+        df_1h = heikin_ashi.resample(raw_df, "1h")
         assert "open" in df_1h.columns
         assert "close" in df_1h.columns
         assert "open_time" in df_1h.columns
         assert "close_time" in df_1h.columns
 
-    def test_pre_process_applies_bollinguer_spreads(self, heikin_ashi: HeikinAshi):
-        """df returned by pre_process must carry bb_upper, bb_lower, bb_mid columns."""
-        df, _ = heikin_ashi.pre_process()
+    def test_bollinguer_spreads_adds_bb_columns(self, heikin_ashi: HeikinAshi):
+        """bb_upper, bb_lower, bb_mid columns are added when caller invokes bollinguer_spreads."""
+        from pybinbot.shared.indicators import Indicators
+        df = heikin_ashi.pre_process()
+        df = Indicators.bollinguer_spreads(df)
         assert "bb_upper" in df.columns
         assert "bb_lower" in df.columns
         assert "bb_mid" in df.columns
 
-    def test_pre_process_bb_columns_are_numeric(self, heikin_ashi: HeikinAshi):
-        df, _ = heikin_ashi.pre_process()
+    def test_bollinguer_spreads_columns_are_numeric(self, heikin_ashi: HeikinAshi):
+        from pybinbot.shared.indicators import Indicators
+        df = heikin_ashi.pre_process()
+        df = Indicators.bollinguer_spreads(df)
         assert pd.api.types.is_numeric_dtype(df["bb_upper"])
         assert pd.api.types.is_numeric_dtype(df["bb_lower"])
         assert pd.api.types.is_numeric_dtype(df["bb_mid"])
 
-    def test_pre_process_bb_upper_gte_lower(self, heikin_ashi: HeikinAshi):
-        df, _ = heikin_ashi.pre_process()
+    def test_bollinguer_spreads_bb_upper_gte_lower(self, heikin_ashi: HeikinAshi):
+        from pybinbot.shared.indicators import Indicators
+        df = heikin_ashi.pre_process()
+        df = Indicators.bollinguer_spreads(df)
         valid = df[["bb_upper", "bb_lower"]].dropna()
         assert (valid["bb_upper"] >= valid["bb_lower"]).all()
 
