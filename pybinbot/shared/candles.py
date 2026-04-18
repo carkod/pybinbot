@@ -1,7 +1,6 @@
 from typing import cast
 
-from pandas import DataFrame, to_numeric
-from pandas.tseries.frequencies import to_offset
+from pandas import DataFrame, to_numeric, Timedelta
 from pandas.api.types import is_numeric_dtype
 from pandas import to_datetime
 from pandera.typing import DataFrame as TypedDataFrame
@@ -184,9 +183,7 @@ class Candles:
         Raises:
             ValueError: If *interval* resolves to less than 15 minutes.
         """
-        offset = to_offset(interval)
-        min_offset = to_offset("15min")
-        if offset < min_offset:
+        if Timedelta(interval) < Timedelta("15min"):
             raise ValueError(
                 f"Resample interval '{interval}' is less than the minimum "
                 "allowed interval of 15 minutes."

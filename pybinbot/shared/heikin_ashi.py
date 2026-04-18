@@ -81,4 +81,3 @@ class HeikinAshi(Candles):
         df = cast(TypedDataFrame[KlineSchema], self._set_time_index(df))
 
         return df
-

@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -1025,7 +1025,7 @@ wheels = [
 
 [[package]]
 name = "pybinbot"
-version = "1.1.0"
+version = "1.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -1047,6 +1047,15 @@ dev = [
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
+    { name = "ruff" },
+    { name = "types-python-dateutil" },
+    { name = "types-requests" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "pytest" },
     { name = "ruff" },
     { name = "types-python-dateutil" },
     { name = "types-requests" },
@@ -1074,6 +1083,15 @@ requires-dist = [
     { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.32.4.20260107" },
 ]
 provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.19.1" },
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "ruff", specifier = ">=0.14.10" },
+    { name = "types-python-dateutil", specifier = ">=2.9.0.20260305" },
+    { name = "types-requests", specifier = ">=2.32.4.20260107" },
+]
 
 [[package]]
 name = "pydantic"

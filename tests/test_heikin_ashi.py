@@ -16,6 +16,7 @@ from pybinbot.models.signals import KlineSchema
 # Shared candle factories (reused across test classes via module-level helpers)
 # ---------------------------------------------------------------------------
 
+
 def _make_kucoin_candles(n: int = 48) -> list[list]:
     """Return *n* synthetic KuCoin-style kline rows (futures format, 7 cols)."""
     base_time = 1609459200000  # 2021-01-01 00:00:00 UTC in ms
@@ -311,7 +312,9 @@ class TestHeikinAshi:
         expected_ha_close = (
             original["open"] + original["high"] + original["low"] + original["close"]
         ) / 4.0
-        assert np.allclose(result["close"].iloc[: len(expected_ha_close)], expected_ha_close)
+        assert np.allclose(
+            result["close"].iloc[: len(expected_ha_close)], expected_ha_close
+        )
 
         assert (result["high"] >= result["close"]).all()
         assert (result["low"] <= result["close"]).all()
@@ -409,7 +412,9 @@ class TestHeikinAshi:
         df = ha.pre_process()
         assert not df.empty
 
-    def test_resample_1h_has_ohlc_columns(self, heikin_ashi: HeikinAshi, kucoin_candles):
+    def test_resample_1h_has_ohlc_columns(
+        self, heikin_ashi: HeikinAshi, kucoin_candles
+    ):
         raw = Candles(ExchangeId.KUCOIN, kucoin_candles)
         raw_df = raw.pre_process()
         df_1h = heikin_ashi.resample(raw_df, "1h")
@@ -421,6 +426,7 @@ class TestHeikinAshi:
     def test_bollinguer_spreads_adds_bb_columns(self, heikin_ashi: HeikinAshi):
         """bb_upper, bb_lower, bb_mid columns are added when caller invokes bollinguer_spreads."""
         from pybinbot.shared.indicators import Indicators
+
         df = heikin_ashi.pre_process()
         df = Indicators.bollinguer_spreads(df)
         assert "bb_upper" in df.columns
@@ -429,6 +435,7 @@ class TestHeikinAshi:
 
     def test_bollinguer_spreads_columns_are_numeric(self, heikin_ashi: HeikinAshi):
         from pybinbot.shared.indicators import Indicators
+
         df = heikin_ashi.pre_process()
         df = Indicators.bollinguer_spreads(df)
         assert pd.api.types.is_numeric_dtype(df["bb_upper"])
@@ -437,6 +444,7 @@ class TestHeikinAshi:
 
     def test_bollinguer_spreads_bb_upper_gte_lower(self, heikin_ashi: HeikinAshi):
         from pybinbot.shared.indicators import Indicators
+
         df = heikin_ashi.pre_process()
         df = Indicators.bollinguer_spreads(df)
         valid = df[["bb_upper", "bb_lower"]].dropna()
@@ -447,4 +455,3 @@ class TestHeikinAshi:
         ha = HeikinAshi(ExchangeId.KUCOIN, malformed)
         with pytest.raises(ValueError):
             ha.pre_process()
-
