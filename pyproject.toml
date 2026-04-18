@@ -22,7 +22,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pybinbot"
-version = "1.1.5"
+version = "1.2.0"
 description = "Utility functions for the binbot project."
 authors = [
     { name="Carlos Wu", email="carkodw@gmail.com" }
