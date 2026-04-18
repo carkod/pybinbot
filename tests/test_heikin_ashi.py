@@ -7,7 +7,7 @@ import numpy as np
 from pandera.typing import DataFrame as TypedDataFrame
 
 from pybinbot.shared.candles import Candles
-from pybinbot.shared.heikin_ashi import HeikinAshi, RawCandles
+from pybinbot.shared.heikin_ashi import HeikinAshi
 from pybinbot.shared.enums import ExchangeId
 from pybinbot.models.signals import KlineSchema
 
@@ -449,79 +449,3 @@ class TestHeikinAshi:
         with pytest.raises(ValueError):
             ha.pre_process()
 
-
-# ---------------------------------------------------------------------------
-# TestRawCandles
-# ---------------------------------------------------------------------------
-
-
-class TestRawCandles:
-    """Test suite for RawCandles class."""
-
-    @pytest.fixture
-    def kucoin_candles(self):
-        return _make_kucoin_candles()
-
-    @pytest.fixture
-    def binance_candles(self):
-        return _make_binance_candles()
-
-    @pytest.fixture
-    def raw_candles(self, kucoin_candles) -> RawCandles:
-        return RawCandles(ExchangeId.KUCOIN, kucoin_candles)
-
-    def test_instantiation(self, raw_candles: RawCandles):
-        assert raw_candles is not None
-        assert isinstance(raw_candles, RawCandles)
-
-    def test_is_subclass_of_candles(self, raw_candles: RawCandles):
-        assert isinstance(raw_candles, Candles)
-
-    def test_is_not_subclass_of_heikin_ashi(self, raw_candles: RawCandles):
-        assert not isinstance(raw_candles, HeikinAshi)
-
-    def test_stores_exchange_and_candles(self, kucoin_candles):
-        rc = RawCandles(ExchangeId.KUCOIN, kucoin_candles)
-        assert rc.exchange is ExchangeId.KUCOIN
-        assert rc.candles is kucoin_candles
-
-    def test_pre_process_returns_two_dataframes(self, raw_candles: RawCandles):
-        result = raw_candles.pre_process()
-        assert len(result) == 2
-        df, df_1h = result
-        assert isinstance(df, DataFrame)
-        assert isinstance(df_1h, DataFrame)
-
-    def test_pre_process_kucoin_has_ohlc_columns(self, raw_candles: RawCandles):
-        df, df_1h = raw_candles.pre_process()
-        for frame in (df, df_1h):
-            for col in ("open", "high", "low", "close"):
-                assert col in frame.columns
-
-    def test_pre_process_binance(self, binance_candles):
-        rc = RawCandles(ExchangeId.BINANCE, binance_candles)
-        df, df_1h = rc.pre_process()
-        assert not df.empty
-        assert not df_1h.empty
-
-    def test_pre_process_returns_raw_ohlc_not_heikin_ashi(self, kucoin_candles):
-        """Raw candle close values must differ from HA-transformed close values."""
-        df_raw, _ = RawCandles(ExchangeId.KUCOIN, kucoin_candles).pre_process()
-        df_ha, _ = HeikinAshi(ExchangeId.KUCOIN, kucoin_candles).pre_process()
-
-        assert not df_raw["close"].equals(df_ha["close"])
-        assert not df_raw["open"].equals(df_ha["open"])
-
-    def test_pre_process_raw_close_matches_original(
-        self, kucoin_candles, raw_candles: RawCandles
-    ):
-        df, _ = raw_candles.pre_process()
-        expected_closes = [float(c[4]) for c in kucoin_candles]
-        assert df["close"].tolist() == pytest.approx(expected_closes, rel=1e-6)
-
-    def test_pre_process_no_bb_columns(self, raw_candles: RawCandles):
-        """RawCandles.pre_process must NOT add Bollinger Band columns."""
-        df, _ = raw_candles.pre_process()
-        assert "bb_upper" not in df.columns
-        assert "bb_lower" not in df.columns
-        assert "bb_mid" not in df.columns

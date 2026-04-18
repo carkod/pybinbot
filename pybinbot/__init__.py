@@ -49,7 +49,7 @@ from pybinbot.shared.enums import (
 )
 from pybinbot.shared.indicators import Indicators
 from pybinbot.shared.candles import Candles
-from pybinbot.shared.heikin_ashi import HeikinAshi, RawCandles
+from pybinbot.shared.heikin_ashi import HeikinAshi
 from pybinbot.shared.logging_config import configure_logging
 from pybinbot.shared.types import Amount, CombinedApis
 from pybinbot.shared.cache import cache
@@ -149,7 +149,6 @@ __all__ = [
     "Indicators",
     "Candles",
     "HeikinAshi",
-    "RawCandles",
     # enums
     "CloseConditions",
     "KafkaTopics",

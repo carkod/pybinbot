@@ -7,6 +7,7 @@ from pandera.typing import DataFrame as TypedDataFrame
 from pybinbot.models.signals import KlineSchema
 from pybinbot.shared.enums import ExchangeId
 from pybinbot.shared.candles import Candles
+from pybinbot.shared.indicators import Indicators
 
 
 class HeikinAshi(Candles):
@@ -78,20 +79,10 @@ class HeikinAshi(Candles):
 
         df = self.get_heikin_ashi(raw_df)
         df = cast(TypedDataFrame[KlineSchema], self._set_time_index(df))
+        df = Indicators.bollinguer_spreads(df)
 
         df_1h = self.get_heikin_ashi(synthetic_1h_df.reset_index(drop=True))
         df_1h = cast(TypedDataFrame[KlineSchema], self._set_time_index(df_1h))
 
         return df, df_1h
 
-
-class RawCandles(Candles):
-    """
-    Performs the same pre-processing as ``Candles`` but makes the raw-candle
-    intent explicit.  OHLC values are left untransformed; only the
-    ``Candles.pre_process`` pipeline (DataFrame construction, numeric coercion,
-    time-indexing, and 1-hour resampling) is applied.
-    """
-
-    def __init__(self, exchange: ExchangeId, candles: list[list]) -> None:
-        super().__init__(exchange, candles)
