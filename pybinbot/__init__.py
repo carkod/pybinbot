@@ -48,6 +48,7 @@ from pybinbot.shared.enums import (
     MarketType,
 )
 from pybinbot.shared.indicators import Indicators
+from pybinbot.shared.candles import Candles
 from pybinbot.shared.heikin_ashi import HeikinAshi
 from pybinbot.shared.logging_config import configure_logging
 from pybinbot.shared.types import Amount, CombinedApis
@@ -146,6 +147,7 @@ __all__ = [
     "timestamp_to_datetime",
     # dataframes
     "Indicators",
+    "Candles",
     "HeikinAshi",
     # enums
     "CloseConditions",
