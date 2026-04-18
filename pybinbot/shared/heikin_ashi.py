@@ -7,7 +7,6 @@ from pandera.typing import DataFrame as TypedDataFrame
 from pybinbot.models.signals import KlineSchema
 from pybinbot.shared.enums import ExchangeId
 from pybinbot.shared.candles import Candles
-from pybinbot.shared.indicators import Indicators
 
 
 class HeikinAshi(Candles):
@@ -79,7 +78,6 @@ class HeikinAshi(Candles):
 
         df = self.get_heikin_ashi(raw_df)
         df = cast(TypedDataFrame[KlineSchema], self._set_time_index(df))
-        df = Indicators.bollinguer_spreads(df)
 
         df_1h = self.get_heikin_ashi(synthetic_1h_df.reset_index(drop=True))
         df_1h = cast(TypedDataFrame[KlineSchema], self._set_time_index(df_1h))

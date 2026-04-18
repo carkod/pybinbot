@@ -6,6 +6,7 @@ from pandas import to_datetime
 from pandera.typing import DataFrame as TypedDataFrame
 from pybinbot.models.signals import KlineSchema
 from pybinbot.shared.enums import ExchangeId
+from pybinbot.shared.indicators import Indicators
 
 
 class Candles:
@@ -207,10 +208,9 @@ class Candles:
         raw_indexed = self._set_time_index(raw_df)
         df_1h = self._resample(raw_indexed, "1h")
 
-        return (
-            cast(TypedDataFrame[KlineSchema], raw_indexed),
-            cast(TypedDataFrame[KlineSchema], df_1h),
-        )
+        df = Indicators.bollinguer_spreads(cast(TypedDataFrame[KlineSchema], raw_indexed))
+
+        return df, cast(TypedDataFrame[KlineSchema], df_1h)
 
     @staticmethod
     def post_process(df: TypedDataFrame[KlineSchema]) -> TypedDataFrame[KlineSchema]:
