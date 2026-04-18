@@ -1,6 +1,7 @@
 from typing import cast
 
 from pandas import DataFrame, to_numeric
+from pandas.tseries.frequencies import to_offset
 from pandas.api.types import is_numeric_dtype
 from pandas import to_datetime
 from pandera.typing import DataFrame as TypedDataFrame
@@ -170,7 +171,26 @@ class Candles:
         df = df[~df.index.duplicated(keep="last")]
         return df
 
-    def _resample(self, df_indexed: DataFrame, rule: str) -> DataFrame:
+    def resample(self, df_indexed: DataFrame, interval: str) -> DataFrame:
+        """Resample *df_indexed* to *interval*.
+
+        Args:
+            df_indexed: Time-indexed OHLCV DataFrame.
+            interval:   Pandas offset alias (e.g. ``"1h"``, ``"30min"``).
+                        Must be **≥ 15 minutes** because the base candles are
+                        always fetched at the 15-minute timeframe.
+
+        Raises:
+            ValueError: If *interval* resolves to less than 15 minutes.
+        """
+        offset = to_offset(interval)
+        min_offset = to_offset("15min")
+        if offset < min_offset:
+            raise ValueError(
+                f"Resample interval '{interval}' is less than the minimum "
+                "allowed interval of 15 minutes."
+            )
+
         resample_aggregation = {
             "open": "first",
             "close": "last",
@@ -183,7 +203,7 @@ class Candles:
         }
         df_resampled = (
             cast(DataFrame, df_indexed)
-            .resample(rule)
+            .resample(interval)
             .agg(cast(dict, resample_aggregation))
         )
         df_resampled = df_resampled.dropna(subset=["open", "high", "low", "close"])
@@ -206,7 +226,7 @@ class Candles:
         raw_df = self._prepare_numeric_ohlcv(raw_df)
 
         raw_indexed = self._set_time_index(raw_df)
-        df_1h = self._resample(raw_indexed, "1h")
+        df_1h = self.resample(raw_indexed, "1h")
 
         df = Indicators.bollinguer_spreads(cast(TypedDataFrame[KlineSchema], raw_indexed))
 

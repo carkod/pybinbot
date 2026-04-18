@@ -75,7 +75,7 @@ class HeikinAshi(Candles):
         raw_df = self._prepare_numeric_ohlcv(raw_df)
 
         raw_indexed = self._set_time_index(raw_df)
-        synthetic_1h_df = self._resample(raw_indexed, "1h")
+        synthetic_1h_df = self.resample(raw_indexed, "1h")
 
         df = self.get_heikin_ashi(raw_df)
         df = cast(TypedDataFrame[KlineSchema], self._set_time_index(df))
