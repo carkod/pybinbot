@@ -1,9 +1,10 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from pybinbot.shared.enums import MarketType, Position
+from pybinbot.shared.enums import MarketType
 from pandera.typing import Series
 from pandera.pandas import DataFrameModel
 from pybinbot.models.bot_base import BotBase
+
 
 class HABollinguerSpread(BaseModel):
     """
@@ -29,7 +30,9 @@ class SignalsConsumer(BaseModel):
     current_price: float = Field(default=0)
     bb_spreads: HABollinguerSpread | None = Field(default=None)
     autotrade: bool = Field(default=True, description="If it is in testing mode, False")
-    bot_params: BotBase | None = Field(default=None, description="Parameters for bot creation")
+    bot_params: BotBase | None = Field(
+        default=None, description="Parameters for bot creation"
+    )
 
     model_config = ConfigDict(
         extra="allow",
