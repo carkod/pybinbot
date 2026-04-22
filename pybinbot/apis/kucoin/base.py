@@ -12,6 +12,9 @@ from kucoin_universal_sdk.generate.spot.market.model_get_symbol_resp import (
 from kucoin_universal_sdk.generate.account.account import (
     GetSpotAccountListReqBuilder,
     GetIsolatedMarginAccountReqBuilder,
+    GetSpotLedgerReq,
+    GetSpotLedgerReqBuilder,
+    GetSpotLedgerResp,
 )
 from kucoin_universal_sdk.generate.account.account.model_get_isolated_margin_account_resp import (
     GetIsolatedMarginAccountResp,
@@ -51,6 +54,16 @@ class KucoinApi(KucoinOrders):
         request = GetPartOrderBookReqBuilder().set_symbol(symbol).set_size("1").build()
         response = self.spot_api.get_ticker(request)
         return float(response.price)
+
+    def get_spot_ledger(self, current_page: int, page_size: int) -> GetSpotLedgerResp:
+        request = (
+            GetSpotLedgerReqBuilder()
+            .set_direction(GetSpotLedgerReq.DirectionEnum.IN_)
+            .set_current_page(current_page)
+            .set_page_size(page_size)
+            .build()
+        )
+        return self.account_api.get_spot_ledger(request)
 
     def get_account_balance(self) -> dict[str, dict[str, float]]:
         """
