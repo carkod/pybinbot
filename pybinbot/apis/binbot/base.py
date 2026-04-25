@@ -214,7 +214,7 @@ class BinbotApi:
 
         data = self.request(
             url=url,
-            params={"name": name, "symbol": symbol, "status": Status.active.value},
+            params={"bot_name": name, "symbol": symbol, "status": Status.active.value},
         )
         return data["data"]
 
