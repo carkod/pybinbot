@@ -12,7 +12,7 @@ from kucoin_universal_sdk.model.client_option import ClientOptionBuilder
 from kucoin_universal_sdk.model.constants import GLOBAL_FUTURES_API_ENDPOINT
 from kucoin_universal_sdk.model.websocket_option import WebSocketClientOptionBuilder
 
-from pybinbot.shared.enums import KafkaTopics, KucoinKlineIntervals, MarketType
+from pybinbot.shared.enums import KucoinKlineIntervals, MarketType
 from pybinbot.models.signals import KlineProduceModel
 from pybinbot.streaming.async_producer import AsyncProducer
 
@@ -167,7 +167,6 @@ class AsyncKucoinWebsocketClient:
             kline_data = await self.message_queue.get()
             try:
                 await self.producer.send(
-                    topic=KafkaTopics.klines_store_topic.value,
                     value=kline_data["json"],
                     key=kline_data["symbol"],
                     timestamp=kline_data["timestamp"],
