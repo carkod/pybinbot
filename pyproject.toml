@@ -22,7 +22,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pybinbot"
-version = "1.4.0"
+version = "1.6.0"
 description = "Utility functions for the binbot project."
 authors = [
     { name="Carlos Wu", email="carkodw@gmail.com" }
@@ -38,7 +38,6 @@ dependencies = [
     "kucoin-universal-sdk>=1.3.0",
     "aiohttp>=3.13.3",
     "python-dotenv>=1.2.1",
-    "aiokafka>=0.13.0",
     "pandera>=0.29.0",
 ]
 
@@ -67,8 +66,4 @@ plugins = ["pydantic.mypy", "pandera.mypy"]
 
 [[tool.mypy.overrides]]
 module = "kucoin_universal_sdk.*"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "aiokafka.*"
 ignore_missing_imports = true
