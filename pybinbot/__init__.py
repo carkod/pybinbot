@@ -44,6 +44,7 @@ from pybinbot.shared.enums import (
     TrendEnum,
     UserRoles,
     MarketType,
+    AutotradeSettingsDocument
 )
 from pybinbot.shared.indicators import Indicators
 from pybinbot.shared.candles import Candles
@@ -167,6 +168,7 @@ __all__ = [
     "SignalsConsumer",
     "MarketDominance",
     "MarketType",
+    "AutotradeSettingsDocument",
     # exchange apis
     "BinbotApi",
     "BinanceApi",
