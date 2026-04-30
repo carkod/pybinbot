@@ -44,7 +44,7 @@ from pybinbot.shared.enums import (
     TrendEnum,
     UserRoles,
     MarketType,
-    AutotradeSettingsDocument
+    AutotradeSettingsDocument,
 )
 from pybinbot.shared.indicators import Indicators
 from pybinbot.shared.candles import Candles
