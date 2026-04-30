@@ -14,7 +14,7 @@ def configure_logging(
     datefmt: str = DEFAULT_DATEFMT,
     utc: bool = True,
     force: bool = True,
-    quiet_loggers: Iterable[str] | None = ("uvicorn", "confluent_kafka"),
+    quiet_loggers: Iterable[str] | None = ("uvicorn",),
 ) -> None:
     """
     Configure root logging consistently across services.

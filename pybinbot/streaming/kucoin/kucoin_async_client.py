@@ -12,9 +12,8 @@ from kucoin_universal_sdk.model.client_option import ClientOptionBuilder
 from kucoin_universal_sdk.model.constants import GLOBAL_FUTURES_API_ENDPOINT
 from kucoin_universal_sdk.model.websocket_option import WebSocketClientOptionBuilder
 
-from pybinbot.shared.enums import KafkaTopics, KucoinKlineIntervals, MarketType
+from pybinbot.shared.enums import KucoinKlineIntervals, MarketType
 from pybinbot.models.signals import KlineProduceModel
-from pybinbot.streaming.async_producer import AsyncProducer
 
 logger = logging.getLogger(__name__)
 
@@ -29,13 +28,11 @@ class AsyncKucoinWebsocketClient:
         key: str,
         secret: str,
         passpharse: str,
-        producer: AsyncProducer,
+        queue: asyncio.Queue,
         market_type: MarketType = MarketType.SPOT,
     ):
-        self.producer = producer
+        self.queue = queue
         self.market_type = market_type
-        self.message_queue: asyncio.Queue = asyncio.Queue()
-        self._queue_processor_task: asyncio.Task | None = None
 
         self.interval = KucoinKlineIntervals.FIFTEEN_MINUTES
         self._last_emission: dict[str, int] = {}
@@ -146,37 +143,12 @@ class AsyncKucoinWebsocketClient:
         )
 
         try:
-            self.message_queue.put_nowait(
-                {
-                    "symbol": symbol,
-                    "json": kline.model_dump_json(),
-                    "timestamp": ts_ms,
-                }
-            )
+            self.queue.put_nowait(kline.model_dump())
         except asyncio.QueueFull:
             logger.error(f"Queue full, dropping {symbol}")
         except Exception as e:
             logger.error(f"Queue error: {e}", exc_info=True)
 
-    # -------------------------------------------------------
-    # Kafka Async Loop
-    # -------------------------------------------------------
-
-    async def _process_message_queue(self) -> None:
-        while True:
-            kline_data = await self.message_queue.get()
-            try:
-                await self.producer.send(
-                    topic=KafkaTopics.klines_store_topic.value,
-                    value=kline_data["json"],
-                    key=kline_data["symbol"],
-                    timestamp=kline_data["timestamp"],
-                )
-            finally:
-                self.message_queue.task_done()
-
     async def run_forever(self) -> None:
-        self._queue_processor_task = asyncio.create_task(self._process_message_queue())
-
         while True:
             await asyncio.sleep(1)

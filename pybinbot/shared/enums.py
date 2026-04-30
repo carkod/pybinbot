@@ -22,14 +22,6 @@ class CloseConditions(str, Enum):
     market_reversal = "market_reversal"
 
 
-class KafkaTopics(str, Enum):
-    klines_store_topic = "klines-store-topic"
-    technical_indicators = "technical-indicators"
-    signals = "signals"
-    restart_streaming = "restart-streaming"
-    restart_autotrade = "restart-autotrade"
-
-
 class BinanceOrderModel(BaseModel):
     """
     Data model given by Binance,
