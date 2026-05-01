@@ -148,19 +148,12 @@ class BinanceApi:
         This must be a separate method because classes use it with inheritance
 
         This request is used in many places to retrieve data about symbols, precisions etc.
-        It is a high weight endpoint, thus Binance could ban our IP
-        However it is not real-time updated data, so cache is used to avoid hitting endpoint
-        too many times and still be able to re-request data everywhere.
-
-        In addition, it uses MongoDB, with a separate database called "mongo_cache"
+        It is a high weight endpoint, thus Binance could ban our IP.
         """
         params = {}
         if symbol:
             params["symbol"] = symbol
 
-        # mongo_cache = self.setup_mongocache()
-        # set up a cache that expires in 1440'' (24hrs)
-        # session = CachedSession("http_cache", backend=mongo_cache, expire_after=1440)
         exchange_info_res = self.request(url=f"{self.exchangeinfo_url}", params=params)
         return exchange_info_res
 
