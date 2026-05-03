@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from typing import Any
 from aiohttp import ClientSession
 from pybinbot import ExchangeId, Status
@@ -6,6 +8,8 @@ from pybinbot.shared.handlers import handle_binbot_errors, aio_response_handler
 from pybinbot.apis.binance.base import BinanceApi
 from datetime import datetime, timezone
 from dateutil.parser import parse
+
+logger = logging.getLogger(__name__)
 
 
 class BinbotApi:
@@ -29,6 +33,11 @@ class BinbotApi:
         self.token: str | None = None
         self.expiry_date: str | None = None
 
+        # Background tasks for fire-and-forget POSTs (e.g. signal records).
+        # Holding strong references prevents asyncio.create_task results from
+        # being garbage-collected before the HTTP round-trip completes.
+        self._background_tasks: set[asyncio.Task] = set()
+
         if not all([self.service_email, self.service_password]):
             raise EnvironmentError("SERVICE_EMAIL and SERVICE_PASSWORD must be set")
 
@@ -46,6 +55,7 @@ class BinbotApi:
         self.bb_top_losers = f"{bb_base_url}/charts/top-losers"
         self.bb_timeseries_url = f"{bb_base_url}/charts/timeseries"
         self.bb_adr_series_url = f"{bb_base_url}/charts/adr-series"
+        self.bb_signals_url = f"{bb_base_url}/signals"
 
         # Trade operations
         self.bb_buy_order_url = f"{bb_base_url}/order/buy"
@@ -183,6 +193,78 @@ class BinbotApi:
         if "data" in response:
             return response["data"]
         return None
+
+    async def create_signal(
+        self,
+        algorithm_name: str,
+        symbol: str,
+        generated_at: datetime,
+        direction: str,
+        autotrade: bool = False,
+        current_regime: str | None = None,
+        context: dict | None = None,
+        bot_params: dict | None = None,
+        indicators: dict | None = None,
+    ) -> dict | None:
+        """
+        Persist a strategy-emitted signal via POST /signals. Returns the
+        created record on success, None on failure (errors are logged but
+        never raised so signal recording can't break the trade path).
+        """
+        payload = {
+            "algorithm_name": algorithm_name,
+            "symbol": symbol,
+            "generated_at": generated_at.isoformat(),
+            "direction": direction,
+            "autotrade": autotrade,
+            "current_regime": current_regime,
+            "context": context or {},
+            "bot_params": bot_params or {},
+            "indicators": indicators or {},
+        }
+        try:
+            response = await self.fetch(
+                url=self.bb_signals_url, method="POST", json=payload
+            )
+            return response.get("data") if isinstance(response, dict) else None
+        except Exception as exc:
+            logger.warning(
+                "create_signal failed for %s %s: %s", algorithm_name, symbol, exc
+            )
+            return None
+
+    def dispatch_create_signal(
+        self,
+        algorithm_name: str,
+        symbol: str,
+        generated_at: datetime,
+        direction: str,
+        autotrade: bool = False,
+        current_regime: str | None = None,
+        context: dict | None = None,
+        bot_params: dict | None = None,
+        indicators: dict | None = None,
+    ) -> asyncio.Task:
+        """
+        Fire-and-forget version of create_signal. Returns immediately so the
+        caller (strategy / autotrade path) is not blocked by the HTTP write.
+        """
+        task = asyncio.create_task(
+            self.create_signal(
+                algorithm_name=algorithm_name,
+                symbol=symbol,
+                generated_at=generated_at,
+                direction=direction,
+                autotrade=autotrade,
+                current_regime=current_regime,
+                context=context,
+                bot_params=bot_params,
+                indicators=indicators,
+            )
+        )
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+        return task
 
     def get_latest_btc_price(self):
         binance_api = BinanceApi()
