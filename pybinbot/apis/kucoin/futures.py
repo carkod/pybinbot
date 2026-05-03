@@ -587,33 +587,34 @@ class KucoinFutures(KucoinRest):
             filled_size = float(order_details.filled_size)
             price_used = float(order_details.avg_deal_price)
             timestamp = order_details.created_at
+            order_type_value = order_details.type.value
+            time_in_force_value = order_details.time_in_force
+            order_side_value = order_details.side.value
 
         except RestError as e:
             if float(e.response.code) == 100001:
-                price = order_details.price
-                order_details = GetOrderByOrderIdResp(
-                    order_id=str(order_resp.order_id),
-                    symbol=symbol,
-                    side=AddOrderReq.SideEnum.SELL.value,
-                    type=AddOrderReq.TypeEnum.LIMIT.value,
-                    price=str(price),
-                    size=str(size),
-                    filled_size=str(size),
-                    time_in_force=AddOrderReq.TimeInForceEnum.GOOD_TILL_CANCELED.value,
-                )
+                # Order not yet visible in details endpoint — fall back to
+                # the request inputs we already have (do NOT touch order_details,
+                # which is unbound here).
+                fallback_price = price if price is not None else (stop_price or 0)
                 status = OrderStatus.NEW
                 filled_size = size
-                price_used = price
+                price_used = fallback_price
                 timestamp = int(time() * 1000)
+                order_type_value = type_enum.value
+                time_in_force_value = (
+                    AddOrderReq.TimeInForceEnum.GOOD_TILL_CANCELED.value
+                )
+                order_side_value = side.value
             else:
                 raise e
 
         return OrderBase(
-            order_type=order_details.type.value,
-            time_in_force=order_details.time_in_force,
+            order_type=order_type_value,
+            time_in_force=time_in_force_value,
             timestamp=timestamp,
             order_id=order_resp.order_id,
-            order_side=order_details.side.value,
+            order_side=order_side_value,
             pair=symbol,
             qty=filled_size,
             price=price_used,
