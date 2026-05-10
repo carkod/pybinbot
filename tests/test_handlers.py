@@ -2,7 +2,11 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from requests import Response, HTTPError
 from aiohttp import ClientResponse
-from pybinbot.shared.handlers import aio_response_handler, handle_binance_errors
+from pybinbot.shared.handlers import (
+    aio_response_handler,
+    handle_binance_errors,
+    handle_binbot_errors,
+)
 from pybinbot.apis.binbot.exceptions import BinbotErrors, QuantityTooLow
 from pybinbot.apis.binance.exceptions import (
     BinanceErrors,
@@ -259,3 +263,28 @@ class TestHandleBinanceErrors:
         result = handle_binance_errors(mock_response)
 
         assert result == {"success": True}
+
+
+class TestHandleBinbotErrors:
+    """Tests for Binbot API error handler"""
+
+    def test_logs_non_json_response_before_reraising(self):
+        mock_response = MagicMock(spec=Response)
+        mock_response.status_code = 500
+        mock_response.reason = "Internal Server Error"
+        mock_response.headers = {"content-type": "text/plain; charset=utf-8"}
+        mock_response.url = "https://api.terminal.binbot.in/account/kucoin-balance"
+        mock_response.text = "upstream rate limit"
+        mock_response.json.side_effect = ValueError("Expecting value")
+
+        with patch("pybinbot.shared.handlers.logging") as mock_logging:
+            with pytest.raises(ValueError):
+                handle_binbot_errors(mock_response)
+
+            mock_logging.warning.assert_called_once()
+            log_args = str(mock_logging.warning.call_args)
+            assert "non-JSON" in log_args
+            assert "500" in log_args
+            assert "text/plain" in log_args
+            assert "upstream rate limit" in log_args
+            assert "/account/kucoin-balance" in log_args
