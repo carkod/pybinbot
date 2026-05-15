@@ -181,6 +181,20 @@ class BinbotApi:
         response = self.request(url=f"{self.bb_one_symbol_url}/{symbol}")
         return response["data"]
 
+    def edit_symbol(self, payload: dict) -> dict:
+        """
+        PUT /symbol — update a symbol row. Payload must match the backend's
+        SymbolRequestPayload; callers typically fetch the current row via
+        get_single_symbol, mutate one field (e.g. futures_leverage), and
+        echo the rest.
+        """
+        response = self.request(
+            url=self.bb_one_symbol_url,
+            method="PUT",
+            json=payload,
+        )
+        return response["data"]
+
     def get_bot_by_symbol(self, symbol: str) -> dict:
         response = self.request(url=f"{self.bb_bot_url}/symbol/{symbol}")
         return response["data"]

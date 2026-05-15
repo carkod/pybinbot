@@ -99,3 +99,31 @@ class TestSubmitBotEventLogs:
         assert captured["json"] == {
             "errors": ["failed to create bot", "failed to create deal"]
         }
+
+
+class TestEditSymbol:
+    def test_puts_payload_to_symbol_url(self) -> None:
+        api_class = load_binbot_api_class()
+        api = object.__new__(api_class)
+        api.bb_one_symbol_url = "https://example.com/symbol"
+
+        captured: dict = {}
+
+        def fake_request(**kwargs):
+            captured.update(kwargs)
+            return {"data": {"id": "BTCUSDTM", "futures_leverage": 2}}
+
+        api.request = fake_request
+
+        payload = {
+            "symbol": "BTCUSDTM",
+            "futures_leverage": 2,
+            "exchange_id": "kucoin",
+            "active": True,
+        }
+        result = api.edit_symbol(payload)
+
+        assert result == {"id": "BTCUSDTM", "futures_leverage": 2}
+        assert captured["url"] == "https://example.com/symbol"
+        assert captured["method"] == "PUT"
+        assert captured["json"] == payload
