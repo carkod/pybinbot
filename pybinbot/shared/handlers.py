@@ -13,6 +13,20 @@ from pybinbot.apis.binance.exceptions import (
     NotEnoughFunds,
 )
 
+BODY_PREVIEW_CHARS = 1000
+
+
+def _log_binbot_response(response: Response, message: str) -> None:
+    logging.warning(
+        "%s status=%s reason=%r content_type=%r url=%s body=%r",
+        message,
+        response.status_code,
+        response.reason,
+        response.headers.get("content-type"),
+        response.url,
+        response.text[:BODY_PREVIEW_CHARS],
+    )
+
 
 async def aio_response_handler(response: ClientResponse):
     content = await response.json()
@@ -99,9 +113,14 @@ def handle_binbot_errors(response: Response) -> dict[Any, Any]:
 
     """
     if response.status_code == 404:
+        _log_binbot_response(response, "Binbot API returned 404")
         raise HTTPError(response=response)
 
-    content = response.json()
+    try:
+        content = response.json()
+    except Exception:
+        _log_binbot_response(response, "Binbot API returned non-JSON response")
+        raise
 
     if response.status_code == 401:
         if "detail" in content:
