@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'win32'",
@@ -1052,7 +1052,7 @@ wheels = [
 
 [[package]]
 name = "pybinbot"
-version = "1.8.8"
+version = "1.8.12"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
