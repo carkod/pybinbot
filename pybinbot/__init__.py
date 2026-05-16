@@ -64,7 +64,7 @@ from pybinbot.models.signals import (
     HABollinguerSpread,
     SignalsConsumer,
     KlineProduceModel,
-    KlineSchema
+    KlineSchema,
 )
 from pybinbot.models.symbol import SymbolModel
 from pybinbot.models.routes import StandardResponse
