@@ -8,6 +8,8 @@ from unittest.mock import patch
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
+from pybinbot.shared.enums import ExchangeId
+
 
 def load_binbot_api_class():
     pybinbot_stub = types.ModuleType("pybinbot")
@@ -168,12 +170,16 @@ class TestEditSymbol:
 
         api.request = fake_request
 
-        result = api.edit_symbol("BTCUSDTM", futures_leverage=2)
+        result = api.edit_symbol("BTCUSDTM", ExchangeId.KUCOIN, futures_leverage=2)
 
         assert result == {"id": "BTCUSDTM", "futures_leverage": 2}
         assert captured["url"] == "https://example.com/symbol"
         assert captured["method"] == "PUT"
-        assert captured["json"] == {"futures_leverage": 2, "symbol": "BTCUSDTM"}
+        assert captured["json"] == {
+            "futures_leverage": 2,
+            "symbol": "BTCUSDTM",
+            "exchange_id": "kucoin",
+        }
 
     def test_validates_symbol_model_fields(self) -> None:
         api_class = load_binbot_api_class()
@@ -183,7 +189,7 @@ class TestEditSymbol:
         api.request = lambda **kwargs: {"data": kwargs["json"]}
 
         try:
-            api.edit_symbol("BTCUSDTM", futures_leverage=4)
+            api.edit_symbol("BTCUSDTM", ExchangeId.KUCOIN, futures_leverage=4)
         except ValueError as exc:
             assert "less than or equal to 3" in str(exc)
         else:
@@ -197,7 +203,7 @@ class TestEditSymbol:
         api.request = lambda **kwargs: {"data": kwargs["json"]}
 
         try:
-            api.edit_symbol("BTCUSDTM", unsupported=True)
+            api.edit_symbol("BTCUSDTM", ExchangeId.KUCOIN, unsupported=True)
         except TypeError as exc:
             assert "unexpected keyword argument" in str(exc)
         else:
@@ -216,10 +222,10 @@ class TestEditSymbol:
 
         api.request = fake_request
 
-        result = api.edit_symbol("BTCUSDTM")
+        result = api.edit_symbol("BTCUSDTM", ExchangeId.KUCOIN)
 
-        assert result == {"symbol": "BTCUSDTM"}
-        assert captured["json"] == {"symbol": "BTCUSDTM"}
+        assert result == {"symbol": "BTCUSDTM", "exchange_id": "kucoin"}
+        assert captured["json"] == {"symbol": "BTCUSDTM", "exchange_id": "kucoin"}
 
     def test_omits_none_values_from_symbol_payload(self) -> None:
         api_class = load_binbot_api_class()
@@ -234,7 +240,7 @@ class TestEditSymbol:
 
         api.request = fake_request
 
-        result = api.edit_symbol("BTCUSDTM", active=None)
+        result = api.edit_symbol("BTCUSDTM", ExchangeId.KUCOIN, active=None)
 
-        assert result == {"symbol": "BTCUSDTM"}
-        assert captured["json"] == {"symbol": "BTCUSDTM"}
+        assert result == {"symbol": "BTCUSDTM", "exchange_id": "kucoin"}
+        assert captured["json"] == {"symbol": "BTCUSDTM", "exchange_id": "kucoin"}
