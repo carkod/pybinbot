@@ -5,6 +5,13 @@ from typing import Iterable
 
 DEFAULT_FORMAT = "%(asctime)s.%(msecs)03d UTC %(levelname)s %(name)s: %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
+DEFAULT_QUIET_LOGGERS = (
+    "httpcore",
+    "httpx",
+    "telegram",
+    "telegram.ext",
+    "uvicorn",
+)
 
 
 def configure_logging(
@@ -14,7 +21,7 @@ def configure_logging(
     datefmt: str = DEFAULT_DATEFMT,
     utc: bool = True,
     force: bool = True,
-    quiet_loggers: Iterable[str] | None = ("uvicorn",),
+    quiet_loggers: Iterable[str] | None = DEFAULT_QUIET_LOGGERS,
 ) -> None:
     """
     Configure root logging consistently across services.
@@ -30,7 +37,7 @@ def configure_logging(
         logging.Formatter.converter = time.gmtime
 
     if quiet_loggers:
-        quiet_level = os.environ.get("QUIET_LIB_LOG_LEVEL", "WARNING").upper()
+        quiet_level = os.environ.get("QUIET_LIB_LOG_LEVEL", resolved_level).upper()
         for name in quiet_loggers:
             logging.getLogger(name).setLevel(quiet_level)
 
