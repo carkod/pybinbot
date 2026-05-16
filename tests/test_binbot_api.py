@@ -168,12 +168,12 @@ class TestEditSymbol:
 
         api.request = fake_request
 
-        result = api.edit_symbol(id="BTCUSDTM", futures_leverage=2)
+        result = api.edit_symbol("BTCUSDTM", futures_leverage=2)
 
         assert result == {"id": "BTCUSDTM", "futures_leverage": 2}
         assert captured["url"] == "https://example.com/symbol"
         assert captured["method"] == "PUT"
-        assert captured["json"] == {"id": "BTCUSDTM", "futures_leverage": 2}
+        assert captured["json"] == {"futures_leverage": 2, "symbol": "BTCUSDTM"}
 
     def test_validates_symbol_model_fields(self) -> None:
         api_class = load_binbot_api_class()
@@ -183,13 +183,13 @@ class TestEditSymbol:
         api.request = lambda **kwargs: {"data": kwargs["json"]}
 
         try:
-            api.edit_symbol(id="BTCUSDTM", futures_leverage=4)
+            api.edit_symbol("BTCUSDTM", futures_leverage=4)
         except ValueError as exc:
             assert "less than or equal to 3" in str(exc)
         else:
             raise AssertionError("Expected invalid futures_leverage to fail")
 
-    def test_rejects_fields_outside_symbol_model(self) -> None:
+    def test_rejects_fields_outside_edit_symbol_signature(self) -> None:
         api_class = load_binbot_api_class()
         api = object.__new__(api_class)
         api.bb_one_symbol_url = "https://example.com/symbol"
@@ -197,13 +197,13 @@ class TestEditSymbol:
         api.request = lambda **kwargs: {"data": kwargs["json"]}
 
         try:
-            api.edit_symbol(symbol="BTCUSDTM")
-        except ValueError as exc:
-            assert "Extra inputs are not permitted" in str(exc)
+            api.edit_symbol("BTCUSDTM", unsupported=True)
+        except TypeError as exc:
+            assert "unexpected keyword argument" in str(exc)
         else:
-            raise AssertionError("Expected unknown SymbolModel field to fail")
+            raise AssertionError("Expected unknown edit_symbol field to fail")
 
-    def test_allows_empty_symbol_payload(self) -> None:
+    def test_allows_symbol_only_payload(self) -> None:
         api_class = load_binbot_api_class()
         api = object.__new__(api_class)
         api.bb_one_symbol_url = "https://example.com/symbol"
@@ -216,10 +216,10 @@ class TestEditSymbol:
 
         api.request = fake_request
 
-        result = api.edit_symbol()
+        result = api.edit_symbol("BTCUSDTM")
 
-        assert result == {}
-        assert captured["json"] == {}
+        assert result == {"symbol": "BTCUSDTM"}
+        assert captured["json"] == {"symbol": "BTCUSDTM"}
 
     def test_omits_none_values_from_symbol_payload(self) -> None:
         api_class = load_binbot_api_class()
@@ -234,7 +234,7 @@ class TestEditSymbol:
 
         api.request = fake_request
 
-        result = api.edit_symbol(id="BTCUSDTM", active=None)
+        result = api.edit_symbol("BTCUSDTM", active=None)
 
-        assert result == {"id": "BTCUSDTM"}
-        assert captured["json"] == {"id": "BTCUSDTM"}
+        assert result == {"symbol": "BTCUSDTM"}
+        assert captured["json"] == {"symbol": "BTCUSDTM"}

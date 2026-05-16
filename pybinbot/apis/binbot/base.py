@@ -8,7 +8,7 @@ from pybinbot.shared.handlers import handle_binbot_errors, aio_response_handler
 from pybinbot.apis.binance.base import BinanceApi
 from datetime import datetime, timezone
 from dateutil.parser import parse
-from pybinbot.models.symbol import SymbolModel
+from pybinbot.models.symbol import AssetIndexModel, SymbolModel
 
 logger = logging.getLogger(__name__)
 
@@ -182,13 +182,52 @@ class BinbotApi:
         response = self.request(url=f"{self.bb_one_symbol_url}/{symbol}")
         return response["data"]
 
-    def edit_symbol(self, **symbol_fields: Any) -> dict:
+    def edit_symbol(
+        self,
+        symbol: str,
+        *,
+        created_at: int | None = None,
+        updated_at: int | None = None,
+        active: bool | None = None,
+        blacklist_reason: str | None = None,
+        description: str | None = None,
+        quote_asset: str | None = None,
+        base_asset: str | None = None,
+        cooldown: int | None = None,
+        cooldown_start_ts: int | None = None,
+        futures_leverage: int | None = None,
+        asset_indices: list[AssetIndexModel] | None = None,
+        exchange_id: ExchangeId | str | None = None,
+        is_margin_trading_allowed: bool | None = None,
+        price_precision: int | None = None,
+        qty_precision: int | None = None,
+        min_notional: float | None = None,
+    ) -> dict:
         """
         PUT /symbol — update a symbol row.
 
         Only explicitly passed SymbolModel fields are sent in the payload.
         """
-        payload = SymbolModel.to_update_payload(**symbol_fields)
+        payload = SymbolModel.to_update_payload(
+            id=symbol,
+            created_at=created_at,
+            updated_at=updated_at,
+            active=active,
+            blacklist_reason=blacklist_reason,
+            description=description,
+            quote_asset=quote_asset,
+            base_asset=base_asset,
+            cooldown=cooldown,
+            cooldown_start_ts=cooldown_start_ts,
+            futures_leverage=futures_leverage,
+            asset_indices=asset_indices,
+            exchange_id=exchange_id,
+            is_margin_trading_allowed=is_margin_trading_allowed,
+            price_precision=price_precision,
+            qty_precision=qty_precision,
+            min_notional=min_notional,
+        )
+        payload["symbol"] = payload.pop("id")
         response = self.request(
             url=self.bb_one_symbol_url,
             method="PUT",
