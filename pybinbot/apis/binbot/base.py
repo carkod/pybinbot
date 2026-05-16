@@ -8,6 +8,7 @@ from pybinbot.shared.handlers import handle_binbot_errors, aio_response_handler
 from pybinbot.apis.binance.base import BinanceApi
 from datetime import datetime, timezone
 from dateutil.parser import parse
+from pybinbot.models.symbol import SymbolModel
 
 logger = logging.getLogger(__name__)
 
@@ -181,13 +182,13 @@ class BinbotApi:
         response = self.request(url=f"{self.bb_one_symbol_url}/{symbol}")
         return response["data"]
 
-    def edit_symbol(self, payload: dict) -> dict:
+    def edit_symbol(self, **symbol_fields: Any) -> dict:
         """
-        PUT /symbol — update a symbol row. Payload must match the backend's
-        SymbolRequestPayload; callers typically fetch the current row via
-        get_single_symbol, mutate one field (e.g. futures_leverage), and
-        echo the rest.
+        PUT /symbol — update a symbol row.
+
+        Only explicitly passed SymbolModel fields are sent in the payload.
         """
+        payload = SymbolModel.to_update_payload(**symbol_fields)
         response = self.request(
             url=self.bb_one_symbol_url,
             method="PUT",
