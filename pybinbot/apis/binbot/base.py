@@ -185,6 +185,7 @@ class BinbotApi:
     def edit_symbol(
         self,
         symbol: str,
+        exchange_id: ExchangeId | str,
         *,
         created_at: int | None = None,
         updated_at: int | None = None,
@@ -197,7 +198,6 @@ class BinbotApi:
         cooldown_start_ts: int | None = None,
         futures_leverage: int | None = None,
         asset_indices: list[AssetIndexModel] | None = None,
-        exchange_id: ExchangeId | str | None = None,
         is_margin_trading_allowed: bool | None = None,
         price_precision: int | None = None,
         qty_precision: int | None = None,
