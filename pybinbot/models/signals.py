@@ -50,10 +50,10 @@ class SignalsConsumer(BaseModel):
 
     @model_validator(mode="after")
     def validate_signal_payload(self) -> "SignalsConsumer":
-        if self.signal_kind == "bot" and self.bot_params is None:
-            raise ValueError("bot_params is required when signal_kind is bot")
         if self.signal_kind == "grid_deploy" and self.grid_params is None:
             raise ValueError("grid_params is required when signal_kind is grid_deploy")
+        if self.signal_kind == "grid_close" and self.grid_params is None:
+            raise ValueError("grid_params is required when signal_kind is grid_close")
         return self
 
     @field_validator("spread", "current_price")
