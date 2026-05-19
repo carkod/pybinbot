@@ -331,7 +331,6 @@ class BinbotApi:
         task.add_done_callback(self._background_tasks.discard)
         return task
 
-
     async def create_grid_signal(
         self, grid_params: GridDeploymentRequest, autotrade: bool
     ) -> dict | None:
@@ -420,7 +419,6 @@ class BinbotApi:
         )
         return data
 
-
     def create_grid_ladder(self, data: dict) -> dict:
         response = self.request(url=self.bb_grid_ladders_url, method="POST", json=data)
         return response
@@ -437,9 +435,7 @@ class BinbotApi:
         response = self.request(url=f"{self.bb_grid_ladders_url}/{ladder_id}")
         return response
 
-    def close_grid_ladder(
-        self, ladder_id: str, data: dict | None = None
-    ) -> dict:
+    def close_grid_ladder(self, ladder_id: str, data: dict | None = None) -> dict:
         response = self.request(
             url=f"{self.bb_grid_ladders_url}/{ladder_id}/close",
             method="POST",

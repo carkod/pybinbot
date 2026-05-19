@@ -43,7 +43,9 @@ def test_grid_deployment_request_rejects_breakout_inside_range() -> None:
     payload = valid_grid_payload()
     payload["breakout_low"] = 95.0
 
-    with pytest.raises(ValidationError, match="breakout_low must be less than range_low"):
+    with pytest.raises(
+        ValidationError, match="breakout_low must be less than range_low"
+    ):
         GridDeploymentRequest(**payload)
 
 
@@ -80,7 +82,9 @@ def test_signals_consumer_accepts_grid_deploy_signal_with_grid_params() -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_signal_includes_signal_kind_and_grid_params_in_payload() -> None:
+async def test_create_signal_includes_signal_kind_and_grid_params_in_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     api = object.__new__(BinbotApi)
     api.bb_signals_url = "https://example.com/signals"
     captured: dict = {}
@@ -89,7 +93,7 @@ async def test_create_signal_includes_signal_kind_and_grid_params_in_payload() -
         captured.update(kwargs)
         return {"data": {"id": "signal-1"}}
 
-    api.fetch = fake_fetch
+    monkeypatch.setattr(api, "fetch", fake_fetch)
 
     result = await api.create_signal(
         algorithm_name="grid-test",
@@ -111,7 +115,9 @@ async def test_create_signal_includes_signal_kind_and_grid_params_in_payload() -
 
 
 @pytest.mark.asyncio
-async def test_create_grid_signal_serializes_deployment_request_correctly() -> None:
+async def test_create_grid_signal_serializes_deployment_request_correctly(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     api = object.__new__(BinbotApi)
     deployment = GridDeploymentRequest(**valid_grid_payload())
     captured: dict = {}
@@ -120,7 +126,7 @@ async def test_create_grid_signal_serializes_deployment_request_correctly() -> N
         captured.update(kwargs)
         return {"id": "signal-1"}
 
-    api.create_signal = fake_create_signal
+    monkeypatch.setattr(api, "create_signal", fake_create_signal)
 
     result = await api.create_grid_signal(deployment, autotrade=True)
 
@@ -134,7 +140,9 @@ async def test_create_grid_signal_serializes_deployment_request_correctly() -> N
     assert captured["grid_params"] == deployment.model_dump(mode="json")
 
 
-def test_grid_ladder_client_methods_use_explicit_urls() -> None:
+def test_grid_ladder_client_methods_use_explicit_urls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     api = object.__new__(BinbotApi)
     api.bb_grid_ladders_url = "https://example.com/grid-ladders"
     api.bb_active_grid_ladders_url = "https://example.com/grid-ladders/active"
@@ -144,7 +152,7 @@ def test_grid_ladder_client_methods_use_explicit_urls() -> None:
         calls.append(kwargs)
         return {"ok": True}
 
-    api.request = fake_request
+    monkeypatch.setattr(api, "request", fake_request)
 
     assert api.create_grid_ladder({"symbol": "BTCUSDC"}) == {"ok": True}
     assert api.get_grid_ladders() == {"ok": True}
