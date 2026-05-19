@@ -9,6 +9,7 @@ from pybinbot.apis.binance.base import BinanceApi
 from datetime import datetime, timezone
 from dateutil.parser import parse
 from pybinbot.models.symbol import AssetIndexModel, SymbolModel
+from pybinbot.models.grid_ladder import GridDeploymentRequest
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,8 @@ class BinbotApi:
         self.bb_timeseries_url = f"{bb_base_url}/charts/timeseries"
         self.bb_adr_series_url = f"{bb_base_url}/charts/adr-series"
         self.bb_signals_url = f"{bb_base_url}/signals"
+        self.bb_grid_ladders_url = f"{bb_base_url}/grid-ladders"
+        self.bb_active_grid_ladders_url = f"{bb_base_url}/grid-ladders/active"
 
         # Trade operations
         self.bb_buy_order_url = f"{bb_base_url}/order/buy"
@@ -259,6 +262,8 @@ class BinbotApi:
         context: dict | None = None,
         bot_params: dict | None = None,
         indicators: dict | None = None,
+        signal_kind: str = "bot",
+        grid_params: dict | None = None,
     ) -> dict | None:
         """
         Persist a strategy-emitted signal via POST /signals. Returns the
@@ -272,8 +277,10 @@ class BinbotApi:
             "direction": direction,
             "autotrade": autotrade,
             "current_regime": current_regime,
+            "signal_kind": signal_kind,
             "context": context or {},
             "bot_params": bot_params or {},
+            "grid_params": grid_params or {},
             "indicators": indicators or {},
         }
         try:
@@ -298,6 +305,8 @@ class BinbotApi:
         context: dict | None = None,
         bot_params: dict | None = None,
         indicators: dict | None = None,
+        signal_kind: str = "bot",
+        grid_params: dict | None = None,
     ) -> asyncio.Task:
         """
         Fire-and-forget version of create_signal. Returns immediately so the
@@ -314,11 +323,32 @@ class BinbotApi:
                 context=context,
                 bot_params=bot_params,
                 indicators=indicators,
+                signal_kind=signal_kind,
+                grid_params=grid_params,
             )
         )
         self._background_tasks.add(task)
         task.add_done_callback(self._background_tasks.discard)
         return task
+
+
+    async def create_grid_signal(
+        self, grid_params: GridDeploymentRequest, autotrade: bool
+    ) -> dict | None:
+        """Persist a grid deployment signal using the generic signal endpoint."""
+        return await self.create_signal(
+            algorithm_name=grid_params.algorithm_name,
+            symbol=grid_params.symbol,
+            generated_at=grid_params.generated_at,
+            direction="grid",
+            autotrade=autotrade,
+            current_regime=grid_params.current_regime,
+            context=grid_params.context,
+            bot_params={},
+            indicators=grid_params.indicators,
+            signal_kind="grid_deploy",
+            grid_params=grid_params.model_dump(mode="json"),
+        )
 
     def get_latest_btc_price(self):
         binance_api = BinanceApi()
@@ -389,6 +419,33 @@ class BinbotApi:
             json={"errors": errors},
         )
         return data
+
+
+    def create_grid_ladder(self, data: dict) -> dict:
+        response = self.request(url=self.bb_grid_ladders_url, method="POST", json=data)
+        return response
+
+    def get_grid_ladders(self) -> dict:
+        response = self.request(url=self.bb_grid_ladders_url)
+        return response
+
+    def get_active_grid_ladders(self) -> dict:
+        response = self.request(url=self.bb_active_grid_ladders_url)
+        return response
+
+    def get_grid_ladder(self, ladder_id: str) -> dict:
+        response = self.request(url=f"{self.bb_grid_ladders_url}/{ladder_id}")
+        return response
+
+    def close_grid_ladder(
+        self, ladder_id: str, data: dict | None = None
+    ) -> dict:
+        response = self.request(
+            url=f"{self.bb_grid_ladders_url}/{ladder_id}/close",
+            method="POST",
+            json=data or {},
+        )
+        return response
 
     def create_bot(self, data: dict) -> dict[Any, Any]:
         response = self.request(url=self.bb_bot_url, method="POST", json=data)
