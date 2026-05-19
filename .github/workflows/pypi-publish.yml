@@ -1,15 +1,47 @@
 name: Publish to PyPI and release on Github
 
 on:
-  push:
-    branches:
-      - '!main'
-      - '!master'
-      - '*'
+  pull_request:
   workflow_dispatch:
 
 jobs:
+  detect-version-bump:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+      version: ${{ steps.diff.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Compare pyproject.toml version against PR base
+        id: diff
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+          extract_version() {
+            awk -F'"' '/^version[[:space:]]*=/ { print $2; exit }' "$1"
+          }
+          base_version=""
+          if [ -n "${BASE_REF:-}" ]; then
+            git show "origin/${BASE_REF}:pyproject.toml" > base_pyproject.toml 2>/dev/null || true
+            if [ -s base_pyproject.toml ]; then
+              base_version=$(extract_version base_pyproject.toml)
+            fi
+          fi
+          head_version=$(extract_version pyproject.toml)
+          echo "base=$base_version head=$head_version"
+          if [ -n "$head_version" ] && [ "$base_version" != "$head_version" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "version=$head_version" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build-and-publish:
+    needs: detect-version-bump
+    if: needs.detect-version-bump.outputs.changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
