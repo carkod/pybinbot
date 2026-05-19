@@ -78,34 +78,63 @@ class GridDeploymentRequest(BaseModel):
 
 
 class GridLevelRecord(BaseModel):
+    """
+    Persisted grid level as returned by binbot's grid-ladder endpoints.
+    Field names mirror `GridLevelTable` so clients can use this model
+    to deserialize `GET /grid-ladders/{id}.detail.levels[*]`.
+    """
+
     id: str | None = None
     ladder_id: str | None = None
     level_index: int = Field(ge=0)
     price: float = Field(gt=0)
-    margin: float = Field(ge=0)
-    quantity: float | None = Field(default=None, ge=0)
-    status: GridLevelStatus = GridLevelStatus.pending
+    side: str
+    contracts: int = Field(ge=0)
+    margin_required: float = Field(ge=0)
+    status: str
+    entry_order_id: str | None = None
+    take_profit_order_id: str | None = None
+    filled_entry_price: float | None = None
+    filled_entry_qty: float = 0
+    take_profit_price: float | None = None
+    realized_pnl: float = 0
+    created_at: float | None = None
+    updated_at: float | None = None
 
     model_config = ConfigDict(extra="allow", use_enum_values=True)
 
 
 class GridOrderRecord(BaseModel):
+    """
+    Persisted grid order as returned by binbot's grid-ladder endpoints.
+    Field names mirror `GridOrderTable`.
+    """
+
     id: str | None = None
     ladder_id: str | None = None
     level_id: str | None = None
     exchange_order_id: str | None = None
-    role: GridOrderRole
+    client_oid: str | None = None
+    order_role: str
     status: str | None = None
     side: str | None = None
     price: float | None = Field(default=None, gt=0)
-    quantity: float | None = Field(default=None, ge=0)
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    contracts: int = 0
+    filled_qty: float = 0
+    filled_price: float | None = None
+    created_at: float | None = None
+    updated_at: float | None = None
 
     model_config = ConfigDict(extra="allow", use_enum_values=True)
 
 
 class GridLadderRecord(BaseModel):
+    """
+    Persisted grid ladder as returned by binbot's grid-ladder endpoints.
+    Field names mirror `GridLadderTable` (timestamps are floats, IDs are
+    UUID strings) so clients can deserialize `detail` from the response.
+    """
+
     id: str | None = None
     symbol: str
     fiat: str
@@ -113,21 +142,23 @@ class GridLadderRecord(BaseModel):
     market_type: MarketType | str
     algorithm_name: str
     status: GridLadderStatus = GridLadderStatus.pending
-    generated_at: datetime
     range_low: float
     range_high: float
+    grid_step: float
     level_count: int
     total_margin: float
+    reserved_margin: float = 0
+    used_margin: float = 0
+    realized_pnl: float = 0
+    unrealized_pnl: float = 0
     breakout_low: float
     breakout_high: float
-    current_price: float
-    current_regime: str | None = None
+    created_at: float | None = None
+    updated_at: float | None = None
+    closed_at: float | None = None
     context: dict[str, Any] = Field(default_factory=dict)
-    indicators: dict[str, Any] = Field(default_factory=dict)
     levels: list[GridLevelRecord] = Field(default_factory=list)
     orders: list[GridOrderRecord] = Field(default_factory=list)
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
 
     model_config = ConfigDict(extra="allow", use_enum_values=True)
 
@@ -143,12 +174,12 @@ class GridLadderCloseRequest(BaseModel):
 
 
 class GridLadderResponse(BaseModel):
-    data: GridLadderRecord | None = None
+    detail: GridLadderRecord | None = None
 
     model_config = ConfigDict(extra="allow")
 
 
 class GridLadderListResponse(BaseModel):
-    data: list[GridLadderRecord] = Field(default_factory=list)
+    detail: list[GridLadderRecord] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="allow")
