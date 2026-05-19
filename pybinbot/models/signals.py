@@ -1,9 +1,12 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pybinbot.shared.enums import MarketType
 from pandera.typing import Series
 from pandera.pandas import DataFrameModel
 from pybinbot.models.bot_base import BotBase
+from pybinbot.models.grid_ladder import GridDeploymentRequest
 
 
 class HABollinguerSpread(BaseModel):
@@ -30,14 +33,28 @@ class SignalsConsumer(BaseModel):
     current_price: float = Field(default=0)
     bb_spreads: HABollinguerSpread | None = Field(default=None)
     autotrade: bool = Field(default=True, description="If it is in testing mode, False")
+    signal_kind: Literal["bot", "grid_deploy", "grid_close"] = Field(
+        default="bot", description="Signal envelope kind"
+    )
     bot_params: BotBase | None = Field(
         default=None, description="Parameters for bot creation"
+    )
+    grid_params: GridDeploymentRequest | None = Field(
+        default=None, description="Parameters for grid ladder deployment"
     )
 
     model_config = ConfigDict(
         extra="allow",
         use_enum_values=True,
     )
+
+    @model_validator(mode="after")
+    def validate_signal_payload(self) -> "SignalsConsumer":
+        if self.signal_kind == "grid_deploy" and self.grid_params is None:
+            raise ValueError("grid_params is required when signal_kind is grid_deploy")
+        if self.signal_kind == "grid_close" and self.grid_params is None:
+            raise ValueError("grid_params is required when signal_kind is grid_close")
+        return self
 
     @field_validator("spread", "current_price")
     @classmethod

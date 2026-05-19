@@ -71,6 +71,13 @@ def load_binbot_api_class():
     symbol_stub.AssetIndexModel = AssetIndexModel
     symbol_stub.SymbolModel = SymbolModel
 
+    grid_stub = types.ModuleType("pybinbot.models.grid_ladder")
+
+    class GridDeploymentRequest(BaseModel):
+        pass
+
+    grid_stub.GridDeploymentRequest = GridDeploymentRequest
+
     handlers_stub = types.ModuleType("pybinbot.shared.handlers")
     handlers_stub.handle_binbot_errors = lambda response: response
 
@@ -96,6 +103,7 @@ def load_binbot_api_class():
             "pybinbot": pybinbot_stub,
             "pybinbot.models": models_stub,
             "pybinbot.models.symbol": symbol_stub,
+            "pybinbot.models.grid_ladder": grid_stub,
             "pybinbot.shared.handlers": handlers_stub,
             "pybinbot.apis.binance.base": binance_stub,
         },
