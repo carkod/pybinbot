@@ -9,6 +9,10 @@ from pybinbot.apis.binance.base import BinanceApi
 from datetime import datetime, timezone
 from dateutil.parser import parse
 from pybinbot.models.symbol import AssetIndexModel, SymbolModel
+from pybinbot.models.autotrade_settings import (
+    AutotradeSettingsSchema,
+    TestAutotradeSettingsSchema,
+)
 from pybinbot.models.grid_ladder import GridDeploymentRequest, GridLadderRecord
 
 logger = logging.getLogger(__name__)
@@ -362,13 +366,13 @@ class BinbotApi:
         )
         return data
 
-    def get_test_autotrade_settings(self):
+    def get_test_autotrade_settings(self) -> TestAutotradeSettingsSchema:
         data = self.request(url=self.bb_test_autotrade_url)
-        return data["data"]
+        return TestAutotradeSettingsSchema.model_validate(data["data"])
 
-    def get_autotrade_settings(self) -> dict:
+    def get_autotrade_settings(self) -> AutotradeSettingsSchema:
         data = self.request(url=self.bb_autotrade_settings_url)
-        return data["data"]
+        return AutotradeSettingsSchema.model_validate(data["data"])
 
     def get_bots_by_name(
         self, name: str, symbol: str, collection_name="bots"
@@ -421,8 +425,8 @@ class BinbotApi:
 
     def create_grid_ladder(self, data: dict) -> GridLadderRecord:
         response = self.request(url=self.bb_grid_ladders_url, method="POST", json=data)
-        data = GridLadderRecord.model_validate(response["detail"])
-        return data
+        grid_ladder = GridLadderRecord.model_validate(response["detail"])
+        return grid_ladder
 
     def get_grid_ladders(self) -> list[GridLadderRecord]:
         response = self.request(url=self.bb_grid_ladders_url)
@@ -439,13 +443,15 @@ class BinbotApi:
         data = GridLadderRecord.model_validate(response["detail"])
         return data
 
-    def close_grid_ladder(self, ladder_id: str, data: dict | None = None) -> dict:
+    def close_grid_ladder(
+        self, ladder_id: str, data: dict | None = None
+    ) -> GridLadderRecord:
         response = self.request(
             url=f"{self.bb_grid_ladders_url}/{ladder_id}/close",
             method="POST",
             json=data or {},
         )
-        return response["detail"]
+        return GridLadderRecord.model_validate(response["detail"])
 
     def create_bot(self, data: dict) -> dict[Any, Any]:
         response = self.request(url=self.bb_bot_url, method="POST", json=data)

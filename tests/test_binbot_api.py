@@ -76,7 +76,39 @@ def load_binbot_api_class():
     class GridDeploymentRequest(BaseModel):
         pass
 
+    class GridLadderRecord(BaseModel):
+        id: str | None = None
+        symbol: str = ""
+        fiat: str = "USDC"
+        exchange: str = "kucoin"
+        market_type: str = "FUTURES"
+        algorithm_name: str = "fixed_grid"
+        status: str = "pending"
+        range_low: float = 90
+        range_high: float = 110
+        grid_step: float = 5
+        level_count: int = 5
+        total_margin: float = 100
+        reserved_margin: float = 0
+        used_margin: float = 0
+        realized_pnl: float = 0
+        unrealized_pnl: float = 0
+        breakout_low: float = 85
+        breakout_high: float = 115
+
     grid_stub.GridDeploymentRequest = GridDeploymentRequest
+    grid_stub.GridLadderRecord = GridLadderRecord
+
+    autotrade_stub = types.ModuleType("pybinbot.models.autotrade_settings")
+
+    class AutotradeSettingsSchema(BaseModel):
+        fiat: str = "USDC"
+
+    class TestAutotradeSettingsSchema(AutotradeSettingsSchema):
+        pass
+
+    autotrade_stub.AutotradeSettingsSchema = AutotradeSettingsSchema
+    autotrade_stub.TestAutotradeSettingsSchema = TestAutotradeSettingsSchema
 
     handlers_stub = types.ModuleType("pybinbot.shared.handlers")
     handlers_stub.handle_binbot_errors = lambda response: response
@@ -104,6 +136,7 @@ def load_binbot_api_class():
             "pybinbot.models": models_stub,
             "pybinbot.models.symbol": symbol_stub,
             "pybinbot.models.grid_ladder": grid_stub,
+            "pybinbot.models.autotrade_settings": autotrade_stub,
             "pybinbot.shared.handlers": handlers_stub,
             "pybinbot.apis.binance.base": binance_stub,
         },
