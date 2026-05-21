@@ -9,7 +9,7 @@ from pybinbot.apis.binance.base import BinanceApi
 from datetime import datetime, timezone
 from dateutil.parser import parse
 from pybinbot.models.symbol import AssetIndexModel, SymbolModel
-from pybinbot.models.grid_ladder import GridDeploymentRequest
+from pybinbot.models.grid_ladder import GridDeploymentRequest, GridLadderRecord
 
 logger = logging.getLogger(__name__)
 
@@ -419,21 +419,25 @@ class BinbotApi:
         )
         return data
 
-    def create_grid_ladder(self, data: dict) -> dict:
+    def create_grid_ladder(self, data: dict) -> GridLadderRecord:
         response = self.request(url=self.bb_grid_ladders_url, method="POST", json=data)
-        return response
+        data = GridLadderRecord.model_validate(response["detail"])
+        return data
 
-    def get_grid_ladders(self) -> dict:
+    def get_grid_ladders(self) -> list[GridLadderRecord]:
         response = self.request(url=self.bb_grid_ladders_url)
-        return response
+        data = [GridLadderRecord.model_validate(item) for item in response["detail"]]
+        return data
 
-    def get_active_grid_ladders(self) -> dict:
+    def get_active_grid_ladders(self) -> list[GridLadderRecord]:
         response = self.request(url=self.bb_active_grid_ladders_url)
-        return response
+        data = [GridLadderRecord.model_validate(item) for item in response["detail"]]
+        return data
 
-    def get_grid_ladder(self, ladder_id: str) -> dict:
+    def get_grid_ladder(self, ladder_id: str) -> GridLadderRecord:
         response = self.request(url=f"{self.bb_grid_ladders_url}/{ladder_id}")
-        return response
+        data = GridLadderRecord.model_validate(response["detail"])
+        return data
 
     def close_grid_ladder(self, ladder_id: str, data: dict | None = None) -> dict:
         response = self.request(
@@ -441,7 +445,7 @@ class BinbotApi:
             method="POST",
             json=data or {},
         )
-        return response
+        return response["detail"]
 
     def create_bot(self, data: dict) -> dict[Any, Any]:
         response = self.request(url=self.bb_bot_url, method="POST", json=data)
