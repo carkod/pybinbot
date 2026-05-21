@@ -132,4 +132,7 @@ def handle_binbot_errors(response: Response) -> dict[Any, Any]:
         if content and "error" in content and content["error"] == 1:
             raise BinbotErrors(content["message"], content["error"])
 
+        if content and "detail" in content:
+            raise BinbotErrors(content["detail"])
+
     return content
