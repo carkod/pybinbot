@@ -3,7 +3,7 @@ from pybinbot import KucoinRest, KucoinKlineIntervals, OrderType, OrderStatus, D
 from requests import HTTPError, request
 from uuid import uuid4
 from time import sleep, time
-from typing import List
+from typing import Literal
 from pybinbot.models.order import OrderBase
 from kucoin_universal_sdk.generate.futures.order import (
     AddOrderReqBuilder,
@@ -24,6 +24,7 @@ from kucoin_universal_sdk.generate.futures.market import (
     GetKlinesReqBuilder,
     GetSymbolReqBuilder,
     GetPartOrderBookReqBuilder,
+    GetSymbolResp,
 )
 from kucoin_universal_sdk.generate.account.transfer.model_flex_transfer_resp import (
     FlexTransferResp,
@@ -56,6 +57,9 @@ from kucoin_universal_sdk.generate.account.account import (
 from kucoin_universal_sdk.generate.futures.positions.model_get_isolated_margin_risk_limit_resp import (
     GetIsolatedMarginRiskLimitData,
 )
+from kucoin_universal_sdk.generate.futures.positions.model_get_isolated_margin_risk_limit_req import (
+    GetIsolatedMarginRiskLimitReqBuilder,
+)
 from kucoin_universal_sdk.generate.futures.order.model_get_stop_order_list_resp import (
     GetStopOrderListItems,
 )
@@ -74,6 +78,9 @@ from kucoin_universal_sdk.generate.account.deposit import (
 
 from pybinbot.shared.maths import round_numbers
 
+Kline = list[int | float]
+MarginModeName = Literal["ISOLATED", "CROSS"]
+
 
 class KucoinFutures(KucoinRest):
     """
@@ -83,7 +90,7 @@ class KucoinFutures(KucoinRest):
     Futures API KucoinApi(KucoinFutures) in pybinbot
     """
 
-    def __init__(self, key: str, secret: str, passphrase: str):
+    def __init__(self, key: str, secret: str, passphrase: str) -> None:
         self.DEFAULT_LEVERAGE = 3
         self.DEFAULT_MULTIPLIER = 1
         super().__init__(
@@ -93,7 +100,7 @@ class KucoinFutures(KucoinRest):
         )
         self.setup_futures_api()
 
-    def get_symbol_info(self, symbol: str):
+    def get_symbol_info(self, symbol: str) -> GetSymbolResp:
         req = GetSymbolReqBuilder().set_symbol(symbol).build()
         return self.futures_market_api.get_symbol(req)
 
@@ -106,7 +113,7 @@ class KucoinFutures(KucoinRest):
             raise ValueError(f"tick_size not available for symbol {symbol}")
         return float(info.tick_size)
 
-    def _calculate_price_precision(self, symbol) -> int:
+    def _calculate_price_precision(self, symbol: str) -> int:
         """
         Decimals needed for Binance price
         @deprecated - use calculate_price_precision
@@ -242,7 +249,7 @@ class KucoinFutures(KucoinRest):
 
         return book.items
 
-    def cancel_all_futures_orders(self, symbol: str) -> List[str]:
+    def cancel_all_futures_orders(self, symbol: str) -> list[str]:
         """Cancel all open futures orders, optionally filtered by symbol.
 
         Uses the futures Cancel All Orders V3 endpoint, which supports
@@ -307,9 +314,9 @@ class KucoinFutures(KucoinRest):
         symbol: str,
         interval: str,
         limit: int = 500,
-        start_time=None,
-        end_time=None,
-    ) -> list[list]:
+        start_time: int | None = None,
+        end_time: int | None = None,
+    ) -> list[Kline]:
         """
         Get raw klines/candlestick data from KuCoin Futures.
 
@@ -334,7 +341,7 @@ class KucoinFutures(KucoinRest):
         response = self.futures_market_api.get_klines(request)
 
         # --- Parse response ---
-        klines = []
+        klines: list[Kline] = []
         for kline in response.data:
             open_time_ms = int(kline[0])
             open_price = float(kline[1])
@@ -367,9 +374,9 @@ class KucoinFutures(KucoinRest):
         symbol: str,
         interval: str,
         limit: int | None = None,
-        start_time=None,
-        end_time=None,
-    ) -> list[list]:
+        start_time: int | None = None,
+        end_time: int | None = None,
+    ) -> list[Kline]:
         interval_enum = KucoinKlineIntervals(interval)
         is_five_minute_interval = interval_enum == KucoinKlineIntervals.FIVE_MINUTES
         if limit is None:
@@ -419,7 +426,7 @@ class KucoinFutures(KucoinRest):
                     f"Unexpected KuCoin dashboard response code: {content.get('code')}"
                 )
 
-            klines = []
+            klines: list[Kline] = []
             for kline in content["data"]:
                 open_time_ms = int(kline[0]) * 1000
                 close_time_ms = open_time_ms + interval_ms - 1
@@ -490,7 +497,7 @@ class KucoinFutures(KucoinRest):
         size: float,
         leverage: int = 2,
         order_type: OrderType = OrderType.limit,
-        margin_mode: str | None = "ISOLATED",
+        margin_mode: MarginModeName | None = "ISOLATED",
         reduce_only: bool = False,
         close_order: bool = False,
         price: float | None = None,
@@ -622,7 +629,7 @@ class KucoinFutures(KucoinRest):
             deal_type=DealType.base_order,
         )
 
-    def get_futures_balance(self, fiat) -> GetFuturesAccountResp:
+    def get_futures_balance(self, fiat: str) -> GetFuturesAccountResp:
         """
         Get futures account balances.
         """
@@ -636,7 +643,11 @@ class KucoinFutures(KucoinRest):
         """
 
         # 1️⃣ Fetch risk limit tiers
-        tiers = self.futures_positions_api.get_isolated_margin_risk_limit(symbol)
+        req = GetIsolatedMarginRiskLimitReqBuilder().set_symbol(symbol).build()
+        tiers = self.futures_positions_api.get_isolated_margin_risk_limit(req)
+
+        if not tiers.data:
+            raise ValueError(f"No isolated margin risk tiers returned for {symbol}")
 
         # 2️⃣ Sort tiers by min risk limit ascending
         tiers_sorted: list[GetIsolatedMarginRiskLimitData] = sorted(
