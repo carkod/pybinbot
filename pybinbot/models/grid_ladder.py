@@ -53,16 +53,20 @@ class GridDeploymentRequest(BaseModel):
     breakout_low: float = Field(gt=0)
     breakout_high: float = Field(gt=0)
     current_price: float = Field(gt=0)
+    allocation_pct: float = Field(gt=0, le=100)
+    cash_reserve_pct: float = Field(gt=0, le=100)
     current_regime: str | None = None
     context: dict[str, Any] = Field(default_factory=dict)
     indicators: dict[str, Any] = Field(default_factory=dict)
-    allocation_pct: float | None = Field(default=None, gt=0, le=100)
     max_margin_per_ladder: float | None = Field(default=None, gt=0)
-    cash_reserve_pct: float | None = Field(default=None, ge=0, le=100)
     entry_order_type: OrderType | str | None = None
     reduce_only_take_profit: bool | None = None
 
-    model_config = ConfigDict(extra="allow", use_enum_values=True)
+    model_config = ConfigDict(
+        extra="allow",
+        from_attributes=True,
+        use_enum_values=True,
+    )
 
     @model_validator(mode="after")
     def validate_grid_boundaries(self) -> "GridDeploymentRequest":
@@ -101,7 +105,11 @@ class GridLevelRecord(BaseModel):
     created_at: float | None = None
     updated_at: float | None = None
 
-    model_config = ConfigDict(extra="allow", use_enum_values=True)
+    model_config = ConfigDict(
+        extra="allow",
+        from_attributes=True,
+        use_enum_values=True,
+    )
 
 
 class GridOrderRecord(BaseModel):
@@ -125,7 +133,11 @@ class GridOrderRecord(BaseModel):
     created_at: float | None = None
     updated_at: float | None = None
 
-    model_config = ConfigDict(extra="allow", use_enum_values=True)
+    model_config = ConfigDict(
+        extra="allow",
+        from_attributes=True,
+        use_enum_values=True,
+    )
 
 
 class GridLadderRecord(BaseModel):
@@ -160,11 +172,15 @@ class GridLadderRecord(BaseModel):
     levels: list[GridLevelRecord] = Field(default_factory=list)
     orders: list[GridOrderRecord] = Field(default_factory=list)
 
-    model_config = ConfigDict(extra="allow", use_enum_values=True)
+    model_config = ConfigDict(
+        extra="allow",
+        from_attributes=True,
+        use_enum_values=True,
+    )
 
 
 class GridLadderCloseRequest(BaseModel):
-    reason: str | None = None
+    reason: str | None = "manual_close"
     cancel_open_orders: bool = True
     close_positions: bool = True
     reduce_only: bool = True
@@ -176,10 +192,10 @@ class GridLadderCloseRequest(BaseModel):
 class GridLadderResponse(BaseModel):
     detail: GridLadderRecord | None = None
 
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="allow", from_attributes=True)
 
 
 class GridLadderListResponse(BaseModel):
     detail: list[GridLadderRecord] = Field(default_factory=list)
 
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="allow", from_attributes=True)

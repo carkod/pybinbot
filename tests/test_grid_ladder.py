@@ -5,7 +5,7 @@ from pydantic import ValidationError
 
 from pybinbot.apis.binbot.base import BinbotApi
 from pybinbot.models.bot_base import BotBase
-from pybinbot.models.grid_ladder import GridDeploymentRequest
+from pybinbot.models.grid_ladder import GridDeploymentRequest, GridLadderRecord
 from pybinbot.models.signals import SignalsConsumer
 
 
@@ -24,6 +24,8 @@ def valid_grid_payload() -> dict:
         "breakout_low": 80.0,
         "breakout_high": 120.0,
         "current_price": 100.0,
+        "allocation_pct": 50.0,
+        "cash_reserve_pct": 25.0,
         "current_regime": "range",
         "context": {"timeframe": "15m"},
         "indicators": {"rsi": 50},
@@ -147,18 +149,42 @@ def test_grid_ladder_client_methods_use_explicit_urls(
     api.bb_grid_ladders_url = "https://example.com/grid-ladders"
     api.bb_active_grid_ladders_url = "https://example.com/grid-ladders/active"
     calls: list[dict] = []
+    ladder_detail = {
+        "id": "ladder-1",
+        "symbol": "BTCUSDC",
+        "fiat": "USDC",
+        "exchange": "kucoin",
+        "market_type": "FUTURES",
+        "algorithm_name": "grid-test",
+        "status": "pending",
+        "range_low": 90,
+        "range_high": 110,
+        "grid_step": 5,
+        "level_count": 5,
+        "total_margin": 100,
+        "reserved_margin": 0,
+        "breakout_low": 85,
+        "breakout_high": 115,
+    }
 
     def fake_request(**kwargs):
         calls.append(kwargs)
-        return {"ok": True}
+        if kwargs["url"] == "https://example.com/grid-ladders/active":
+            return {"detail": [ladder_detail]}
+        if (
+            kwargs["url"] == "https://example.com/grid-ladders"
+            and "method" not in kwargs
+        ):
+            return {"detail": [ladder_detail]}
+        return {"detail": ladder_detail}
 
     monkeypatch.setattr(api, "request", fake_request)
 
-    assert api.create_grid_ladder({"symbol": "BTCUSDC"}) == {"ok": True}
-    assert api.get_grid_ladders() == {"ok": True}
-    assert api.get_active_grid_ladders() == {"ok": True}
-    assert api.get_grid_ladder("ladder-1") == {"ok": True}
-    assert api.close_grid_ladder("ladder-1", {"reason": "test"}) == {"ok": True}
+    assert isinstance(api.create_grid_ladder({"symbol": "BTCUSDC"}), GridLadderRecord)
+    assert len(api.get_grid_ladders()) == 1
+    assert len(api.get_active_grid_ladders()) == 1
+    assert api.get_grid_ladder("ladder-1").id == "ladder-1"
+    assert api.close_grid_ladder("ladder-1", {"reason": "test"}).id == "ladder-1"
 
     assert calls == [
         {
