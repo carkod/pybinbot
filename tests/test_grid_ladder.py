@@ -24,6 +24,8 @@ def valid_grid_payload() -> dict:
         "breakout_low": 80.0,
         "breakout_high": 120.0,
         "current_price": 100.0,
+        "allocation_pct": 50.0,
+        "cash_reserve_pct": 25.0,
         "current_regime": "range",
         "context": {"timeframe": "15m"},
         "indicators": {"rsi": 50},
