@@ -39,6 +39,7 @@ class AutotradeSettingsSchema(BaseModel):
     grid_total_margin: float = Field(default=1.0)
     grid_level_count: int = Field(default=3)
     grid_max_active_ladders: int = Field(default=3)
+    max_margin_per_ladder_pct: float = Field(default=0.25)
     exchange_id: ExchangeId = Field(
         default=ExchangeId.BINANCE,
         description="Exchange where autotrade bots will operate",
