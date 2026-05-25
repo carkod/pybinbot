@@ -246,7 +246,9 @@ class KucoinFutures(KucoinRest):
         """
         req = GetStopOrderListReqBuilder().set_symbol(symbol).build()
         book = self.futures_order_api.get_stop_order_list(req)
-
+        self.check_rate_limit(
+            book.common_response.rate_limit.remaining, "get_stop_order_list"
+        )
         return book.items
 
     def cancel_all_futures_orders(self, symbol: str) -> list[str]:
@@ -488,7 +490,11 @@ class KucoinFutures(KucoinRest):
         Get current futures position details for a symbol.
         """
         req = GetPositionDetailsReqBuilder().set_symbol(symbol).build()
-        return self.futures_positions_api.get_position_details(req)
+        resp = self.futures_positions_api.get_position_details(req)
+        self.check_rate_limit(
+            resp.common_response.rate_limit.remaining, "get_position_details"
+        )
+        return resp
 
     def place_futures_order(
         self,
