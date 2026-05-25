@@ -1,3 +1,6 @@
+import logging
+import time
+
 from kucoin_universal_sdk.api import DefaultClient
 from kucoin_universal_sdk.model import TransportOptionBuilder
 from kucoin_universal_sdk.model import ClientOptionBuilder
@@ -19,6 +22,26 @@ class KucoinRest:
             .set_max_connection_per_pool(10)
             .build()
         )
+
+    def check_rate_limit(self, remaining: str | int, endpoint: str) -> None:
+        """Log a warning or briefly sleep when the KuCoin rate-limit bucket runs low."""
+        try:
+            remaining_int = int(remaining)
+        except (TypeError, ValueError):
+            return
+        if remaining_int < 100:
+            logging.warning(
+                "KuCoin rate limit critically low (%d remaining) on %s — sleeping 2 s",
+                remaining_int,
+                endpoint,
+            )
+            time.sleep(2)
+        elif remaining_int < 500:
+            logging.warning(
+                "KuCoin rate limit low (%d remaining) on %s",
+                remaining_int,
+                endpoint,
+            )
 
     def setup_client(self) -> DefaultClient:
         client_option = (
