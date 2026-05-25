@@ -6,6 +6,10 @@ from kucoin_universal_sdk.generate.spot.market import GetKlinesReqBuilder
 from pybinbot.apis.kucoin.rest import KucoinRest
 from pybinbot.shared.enums import KucoinKlineIntervals
 
+# Module-level cache: (symbol, interval, candle_boundary_s) -> klines list
+# Boundary changes each candle period so no explicit TTL is needed.
+_klines_cache: dict[tuple[str, str, int], list] = {}
+
 
 class KucoinMarket(KucoinRest):
     """
@@ -58,6 +62,18 @@ class KucoinMarket(KucoinRest):
         end_time = now_ms - (now_ms % interval_ms)
         start_time = end_time - (limit * interval_ms)
 
+        candle_boundary_s = end_time // 1000
+        cache_key = (symbol, interval, candle_boundary_s)
+        cached = _klines_cache.get(cache_key)
+        if cached is not None:
+            logging.debug(
+                "get_ui_klines cache hit: %s %s boundary=%d",
+                symbol,
+                interval,
+                candle_boundary_s,
+            )
+            return cached
+
         builder = (
             GetKlinesReqBuilder()
             .set_symbol(symbol)
@@ -99,4 +115,9 @@ class KucoinMarket(KucoinRest):
                 )
             klines.reverse()
 
+        # Cache result; evict only entries from previous candle periods.
+        stale = [k for k in _klines_cache if k[2] != candle_boundary_s]
+        for k in stale:
+            del _klines_cache[k]
+        _klines_cache[cache_key] = klines
         return klines

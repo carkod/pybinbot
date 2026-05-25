@@ -100,6 +100,7 @@ from pybinbot.apis.binbot.exceptions import (
     SaveBotError,
     InsufficientBalance,
 )
+from pybinbot.apis.coingecko import CoinGecko
 from pybinbot.apis.kucoin.base import KucoinApi
 from pybinbot.apis.kucoin.exceptions import KucoinErrors
 from pybinbot.apis.kucoin.rest import KucoinRest
@@ -205,6 +206,7 @@ __all__ = [
     "MarketType",
     "AutotradeSettingsDocument",
     # exchange apis
+    "CoinGecko",
     "BinbotApi",
     "BinanceApi",
     "KucoinApi",
