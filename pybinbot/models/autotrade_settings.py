@@ -34,6 +34,12 @@ class AutotradeSettingsSchema(BaseModel):
     telegram_signals: bool = Field(default=True)
     max_active_autotrade_bots: int = Field(default=1)
     autoswitch: bool = Field(default=True)
+    grid_allocation_pct: float = Field(default=1.0)
+    grid_cash_reserve_pct: float = Field(default=0.01)
+    grid_total_margin: float = Field(default=1.0)
+    grid_level_count: int = Field(default=3)
+    grid_max_active_ladders: int = Field(default=3)
+    max_margin_per_ladder_pct: float = Field(default=0.25)
     exchange_id: ExchangeId = Field(
         default=ExchangeId.BINANCE,
         description="Exchange where autotrade bots will operate",

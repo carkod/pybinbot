@@ -54,7 +54,7 @@ class GridDeploymentRequest(BaseModel):
     breakout_high: float = Field(gt=0)
     current_price: float = Field(gt=0)
     allocation_pct: float = Field(gt=0, le=100)
-    cash_reserve_pct: float = Field(gt=0, le=100)
+    cash_reserve_pct: float = Field(ge=0, le=100)
     current_regime: str | None = None
     context: dict[str, Any] = Field(default_factory=dict)
     indicators: dict[str, Any] = Field(default_factory=dict)
