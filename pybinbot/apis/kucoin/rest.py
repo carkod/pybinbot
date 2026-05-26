@@ -29,6 +29,8 @@ class KucoinRest:
             remaining_int = int(remaining)
         except (TypeError, ValueError):
             return
+        if remaining_int < 0:
+            return
         if remaining_int < 100:
             logging.warning(
                 "KuCoin rate limit critically low (%d remaining) on %s — sleeping 2 s",
