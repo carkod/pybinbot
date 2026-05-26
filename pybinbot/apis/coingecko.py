@@ -8,12 +8,12 @@ class CoinGecko:
     """
     CoinGecko API client for fetching cryptocurrency data.
 
-    _btc_ohlc_cache holds (fetched_at_unix, DataFrame). CoinGecko only refreshes
+    _btc_ohlc_cache maps days → (fetched_at_unix, DataFrame). CoinGecko only refreshes
     the /ohlc endpoint every 30 minutes, so there is no benefit to calling it more
     often than that.
     """
 
-    _btc_ohlc_cache: tuple[float, DataFrame] | None = None
+    _btc_ohlc_cache: dict[int, tuple[float, DataFrame]] = {}
     _BTC_OHLC_TTL = 1800
 
     def __init__(self):
@@ -26,18 +26,28 @@ class CoinGecko:
         return [cat["id"] for cat in r.json()]
 
     def get_coins_in_category(self, category_id: str) -> list:
-                    "page": str(page),
+        page = 1
         all_coins: list[dict] = []
+        while True:
+            params = {
+                "vs_currency": "usd",
+                "category": category_id,
+                "order": "market_cap_desc",
+                "per_page": "250",
+                "page": str(page),
+            }
+            r = requests.get(
+                f"{self.base_url}/coins/markets", params=params, timeout=15
             )
             r.raise_for_status()
             data = r.json()
             if not data:
                 break
             all_coins.extend(data)
-                "per_page": "250",
+            page += 1
         return all_coins
 
-            r = requests.get(url, params=params, timeout=15)
+    def get_btc_ohlc(self, days: int = 2) -> DataFrame:
         """Return a time-indexed OHLC DataFrame for Bitcoin via CoinGecko.
 
         Args:
@@ -49,21 +59,22 @@ class CoinGecko:
 
         Returns:
             DataFrame with columns [open_time, open, high, low, close],
-            indexed by a UTC DatetimIndex derived from open_time.
+            indexed by a UTC DatetimeIndex derived from open_time.
         """
         now = time.time()
-        if CoinGecko._btc_ohlc_cache is not None:
-            fetched_at, cached_df = CoinGecko._btc_ohlc_cache
+        if days in CoinGecko._btc_ohlc_cache:
+            fetched_at, cached_df = CoinGecko._btc_ohlc_cache[days]
             if now - fetched_at < CoinGecko._BTC_OHLC_TTL:
                 return cached_df
 
         url = f"{self.base_url}/coins/bitcoin/ohlc"
-            indexed by a UTC DatetimeIndex derived from open_time.
+        r = requests.get(url, params={"vs_currency": "usd", "days": str(days)}, timeout=15)
+        r.raise_for_status()
         # Response: [[timestamp_ms, open, high, low, close], ...]
         df = DataFrame(r.json(), columns=["open_time", "open", "high", "low", "close"])
         df["timestamp"] = to_datetime(df["open_time"], unit="ms", utc=True)
         df.set_index("timestamp", inplace=True)
         df.sort_index(inplace=True)
 
-        CoinGecko._btc_ohlc_cache = (now, df)
+        CoinGecko._btc_ohlc_cache[days] = (now, df)
         return df
