@@ -19,7 +19,7 @@ class CoinGecko:
     def __init__(self):
         self.base_url = "https://api.coingecko.com/api/v3"
 
-    def get_all_categories(self) -> list:
+    def get_all_categories(self) -> list[str]:
         url = f"{self.base_url}/coins/categories"
         r = requests.get(url, timeout=15)
         r.raise_for_status()
@@ -68,7 +68,9 @@ class CoinGecko:
                 return cached_df
 
         url = f"{self.base_url}/coins/bitcoin/ohlc"
-        r = requests.get(url, params={"vs_currency": "usd", "days": str(days)}, timeout=15)
+        r = requests.get(
+            url, params={"vs_currency": "usd", "days": str(days)}, timeout=15
+        )
         r.raise_for_status()
         # Response: [[timestamp_ms, open, high, low, close], ...]
         df = DataFrame(r.json(), columns=["open_time", "open", "high", "low", "close"])
