@@ -21,33 +21,23 @@ class CoinGecko:
 
     def get_all_categories(self) -> list:
         url = f"{self.base_url}/coins/categories"
-        r = requests.get(url)
+        r = requests.get(url, timeout=15)
         r.raise_for_status()
         return [cat["id"] for cat in r.json()]
 
     def get_coins_in_category(self, category_id: str) -> list:
-        page = 1
-        all_coins = []
-        while True:
-            r = requests.get(
-                f"{self.base_url}/coins/markets",
-                params={
-                    "vs_currency": "usd",
-                    "category": category_id,
-                    "order": "market_cap_desc",
-                    "per_page": str(250),
                     "page": str(page),
-                },
+        all_coins: list[dict] = []
             )
             r.raise_for_status()
             data = r.json()
             if not data:
                 break
             all_coins.extend(data)
-            page += 1
+                "per_page": "250",
         return all_coins
 
-    def get_btc_ohlc(self, days: int = 2) -> DataFrame:
+            r = requests.get(url, params=params, timeout=15)
         """Return a time-indexed OHLC DataFrame for Bitcoin via CoinGecko.
 
         Args:
@@ -68,8 +58,7 @@ class CoinGecko:
                 return cached_df
 
         url = f"{self.base_url}/coins/bitcoin/ohlc"
-        r = requests.get(url, params={"vs_currency": "usd", "days": str(days)})
-        r.raise_for_status()
+            indexed by a UTC DatetimeIndex derived from open_time.
         # Response: [[timestamp_ms, open, high, low, close], ...]
         df = DataFrame(r.json(), columns=["open_time", "open", "high", "low", "close"])
         df["timestamp"] = to_datetime(df["open_time"], unit="ms", utc=True)

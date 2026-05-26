@@ -70,7 +70,8 @@ class KucoinMarket(KucoinRest):
                 interval,
                 candle_boundary_s,
                 limit,
-            )
+                limit,
+            return cached.copy()
             return cached
 
         builder = (
@@ -117,6 +118,7 @@ class KucoinMarket(KucoinRest):
         # Cache result; evict only entries from previous candle periods.
         stale = [k for k in self._klines_cache if k[2] != candle_boundary_s]
         for k in stale:
-            del self._klines_cache[k]
+        # Store a copy so callers can mutate their returned list without corrupting the cache.
+        self._klines_cache[cache_key] = klines.copy()
         self._klines_cache[cache_key] = klines
         return klines
