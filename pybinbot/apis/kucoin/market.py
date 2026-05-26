@@ -11,10 +11,12 @@ class KucoinMarket(KucoinRest):
     """
     Convienience wrapper for Kucoin order operations.
 
-    - Kucoin transactions don't immediately return all order details so we need cooldown slee
+    - Kucoin transactions don't immediately return all order details so we need cooldown sleep
+    - Module-level cache: (symbol, interval, candle_boundary_s) -> klines list
     """
 
     TRANSACTION_COOLDOWN_SECONDS = 1
+    _klines_cache: dict[tuple[str, str, int, int], list] = {}
 
     def __init__(self, key: str, secret: str, passphrase: str):
         super().__init__(key=key, secret=secret, passphrase=passphrase)
@@ -58,6 +60,20 @@ class KucoinMarket(KucoinRest):
         end_time = now_ms - (now_ms % interval_ms)
         start_time = end_time - (limit * interval_ms)
 
+        candle_boundary_s = end_time // 1000
+        cache_key = (symbol, interval, candle_boundary_s, limit)
+        cached = self._klines_cache.get(cache_key)
+        if cached is not None:
+            logging.debug(
+                "get_ui_klines cache hit: %s %s boundary=%d limit=%d",
+                symbol,
+                interval,
+                candle_boundary_s,
+                limit,
+                limit,
+            return cached.copy()
+            return cached
+
         builder = (
             GetKlinesReqBuilder()
             .set_symbol(symbol)
@@ -99,4 +115,10 @@ class KucoinMarket(KucoinRest):
                 )
             klines.reverse()
 
+        # Cache result; evict only entries from previous candle periods.
+        stale = [k for k in self._klines_cache if k[2] != candle_boundary_s]
+        for k in stale:
+        # Store a copy so callers can mutate their returned list without corrupting the cache.
+        self._klines_cache[cache_key] = klines.copy()
+        self._klines_cache[cache_key] = klines
         return klines
