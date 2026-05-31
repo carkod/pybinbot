@@ -181,57 +181,54 @@ class KucoinFutures(KucoinRest):
                 price = best_bid - tick
             return float(round_numbers(float(price), precision))
 
-        # --- Anti-wick path: walk levels, clamp to slippage band ---
+        # --- Anti-wick path: walk levels within the slippage band ---
+        # The limit price is set to the *worst in-band level needed to fill
+        # size*, not to best_price ± tick.  A limit at that level will fill
+        # all contracts from best_price down to (or up to) that level while
+        # staying within the reference-anchored cap.
         levels = book.bids if side == AddOrderReq.SideEnum.SELL else book.asks
         if not levels:
             return None
 
-        # Best price is the first level in the book (bids: highest first,
-        # asks: lowest first per KuCoin API ordering).
-        best_price = float(levels[0][0])
-        if best_price <= 0:
-            return None
-
-        # 1-tick crossing price from the best level
         if side == AddOrderReq.SideEnum.SELL:
-            crossing = best_price - float(tick)
+            # Floor the cap to the nearest tick so the comparison stays at valid
+            # order-book price levels (limit orders must sit on tick boundaries).
+            cap = float(
+                round_numbers(
+                    reference_price * (1.0 - self._EXIT_MAX_SLIPPAGE_PCT), precision
+                )
+            )
         else:
-            crossing = best_price + float(tick)
+            cap = float(
+                round_numbers(
+                    reference_price * (1.0 + self._EXIT_MAX_SLIPPAGE_PCT), precision
+                )
+            )
 
-        # Slippage cap relative to reference price
-        slippage_pct = self._EXIT_MAX_SLIPPAGE_PCT
-        if side == AddOrderReq.SideEnum.SELL:
-            cap = reference_price * (1.0 - slippage_pct)
-            # SELL: we receive cap or better (higher) — clamp crossing up to cap
-            clamped = max(crossing, cap)
-        else:
-            cap = reference_price * (1.0 + slippage_pct)
-            # BUY: we pay cap or better (lower) — clamp crossing down to cap
-            clamped = min(crossing, cap)
-
-        # Walk levels to verify ``size`` contracts can fill at or better than clamped
         remaining = float(size)
+        worst_in_band: float | None = None
+
         for level_price_raw, level_qty_raw in levels:
             level_price = float(level_price_raw)
             level_qty = float(level_qty_raw)
             if level_qty <= 0:
                 continue
-            # Stop walking if this level is worse than our clamped price
+            # Stop at the first level outside the cap band
             if side == AddOrderReq.SideEnum.SELL:
-                if level_price < clamped:
-                    break  # bids are descending; nothing better below
+                if level_price < cap:
+                    break  # bids descend; everything below is outside the band
             else:
-                if level_price > clamped:
-                    break  # asks are ascending; nothing better above
+                if level_price > cap:
+                    break  # asks ascend; everything above is outside the band
             remaining -= min(remaining, level_qty)
+            worst_in_band = level_price
             if remaining <= 0:
                 break
 
-        if remaining > 0:
-            # Not enough liquidity within the band
+        if remaining > 0 or worst_in_band is None:
             return None
 
-        return float(round_numbers(clamped, precision))
+        return float(round_numbers(worst_in_band, precision))
 
     def _close_with_escalation(
         self,
@@ -241,7 +238,7 @@ class KucoinFutures(KucoinRest):
         leverage: int,
         reference_price: float,
         reduce_only: bool = True,
-    ) -> OrderBase | None:
+    ) -> OrderBase:
         """
         Place a bounded, escalating reduce-only close order.
 
@@ -307,6 +304,12 @@ class KucoinFutures(KucoinRest):
             if market_resp:
                 last_order = market_resp
 
+        if last_order is None:
+            raise RuntimeError(
+                f"_close_with_escalation: all IOC steps up to "
+                f"{self._EXIT_MAX_SLIPPAGE_HARD_PCT:.1%} and market fallback "
+                f"produced no order for {symbol}"
+            )
         return last_order
 
     def buy(

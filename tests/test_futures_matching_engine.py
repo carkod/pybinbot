@@ -130,11 +130,10 @@ def test_sell_wick_book_returns_none():
     )
 
 
-def test_sell_normal_book_returns_capped_crossing():
+def test_sell_normal_book_returns_worst_in_band_level():
     """
-    Normal book: best bid 0.02248, above cap 0.02247.
-    Crossing = 0.02248 - tick = 0.02247.  Cap = 0.02247.  Clamped = 0.02247.
-    Book walk succeeds (0.02248 >= cap) → return capped price.
+    Single-level normal book: bid 0.02248 (above cap 0.02247), qty=50 ≥ size.
+    worst_in_band = 0.02248 (the only level touched).
     """
     f = _make_futures()
     f.futures_market_api = MagicMock()
@@ -148,9 +147,33 @@ def test_sell_normal_book_returns_capped_crossing():
         side=AddOrderReq.SideEnum.SELL,
         reference_price=0.02252,
     )
-    # cap = floor(0.02252 * 0.998, 5) = floor(0.02247496, 5) = 0.02247
-    expected = round_numbers(0.02252 * (1.0 - _EXIT_MAX_SLIPPAGE_PCT), FHEU_PREC)
-    assert result == pytest.approx(expected, abs=1e-6)
+    assert result == pytest.approx(0.02248, abs=1e-6)
+
+
+def test_sell_multi_level_book_returns_worst_level_needed():
+    """
+    Bug regression: first bid has insufficient qty; second bid is above the cap.
+    Old code returned None because the second level was below crossing (best-tick).
+    New code returns the worst level touched (0.02247) since both are in-band.
+
+    reference=0.02252, cap=0.02247, bids=[0.02250(qty=3), 0.02247(qty=10)], size=8.
+    Needs 3 from 0.02250 + 5 from 0.02247.  Limit at 0.02247 fills all 8.
+    """
+    f = _make_futures()
+    f.futures_market_api = MagicMock()
+    f.futures_market_api.get_full_order_book.return_value = _mock_book(
+        bids=[["0.02250", "3"], ["0.02247", "10"]],
+        asks=[["0.02260", "50"]],
+    )
+    result = f.matching_engine(
+        "FHEUSDTM",
+        size=8,
+        side=AddOrderReq.SideEnum.SELL,
+        reference_price=0.02252,
+    )
+    assert result == pytest.approx(0.02247, abs=1e-6), (
+        "Should return worst in-band level 0.02247, not None"
+    )
 
 
 def test_sell_returns_none_when_all_bids_below_cap():
@@ -191,16 +214,16 @@ def test_buy_wick_book_returns_none():
     assert result is None
 
 
-def test_buy_normal_book_returns_capped_crossing():
+def test_buy_normal_book_returns_worst_in_band_level():
     """
-    Normal book: best ask 0.02253, below BUY cap 0.02257.
-    Returns the crossing price (ask + tick = 0.02254, within cap) capped down.
+    Single-level normal book: ask 0.02253 (below BUY cap ~0.02257), qty=50 ≥ size.
+    worst_in_band = 0.02253 (the only level touched).
     """
     f = _make_futures()
     f.futures_market_api = MagicMock()
     f.futures_market_api.get_full_order_book.return_value = _mock_book(
         bids=[["0.02250", "50"]],
-        asks=[["0.02253", "50"]],  # below cap
+        asks=[["0.02253", "50"]],
     )
     result = f.matching_engine(
         "FHEUSDTM",
@@ -208,10 +231,35 @@ def test_buy_normal_book_returns_capped_crossing():
         side=AddOrderReq.SideEnum.BUY,
         reference_price=0.02252,
     )
-    # BUY cap = 0.02252 * 1.002 = 0.02256504, crossing = 0.02253 + tick = 0.02254
-    # clamped = min(0.02254, 0.02256504) = 0.02254, within band → fill
-    assert result is not None
-    assert result <= 0.02252 * (1.0 + _EXIT_MAX_SLIPPAGE_PCT) + 1e-6
+    assert result == pytest.approx(0.02253, abs=1e-6)
+    assert (
+        result is not None and result <= 0.02252 * (1.0 + _EXIT_MAX_SLIPPAGE_PCT) + 1e-6
+    )
+
+
+def test_buy_multi_level_book_returns_worst_level_needed():
+    """
+    BUY mirror of the multi-level regression: first ask has insufficient qty;
+    second ask is still below the cap.  Old code returned None; new code
+    returns the worst ask level needed.
+
+    reference=0.02252, cap=0.02257, asks=[0.02253(qty=3), 0.02255(qty=10)], size=8.
+    """
+    f = _make_futures()
+    f.futures_market_api = MagicMock()
+    f.futures_market_api.get_full_order_book.return_value = _mock_book(
+        bids=[["0.02250", "50"]],
+        asks=[["0.02253", "3"], ["0.02255", "10"]],
+    )
+    result = f.matching_engine(
+        "FHEUSDTM",
+        size=8,
+        side=AddOrderReq.SideEnum.BUY,
+        reference_price=0.02252,
+    )
+    assert result == pytest.approx(0.02255, abs=1e-6), (
+        "Should return worst in-band level 0.02255, not None"
+    )
 
 
 def test_empty_levels_returns_none():
