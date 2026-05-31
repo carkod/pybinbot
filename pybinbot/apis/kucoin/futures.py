@@ -88,7 +88,23 @@ class KucoinFutures(KucoinRest):
 
     To be replaced in the future with KucoinApi class inheriting from
     Futures API KucoinApi(KucoinFutures) in pybinbot
+
+
+    ---------------------------------------------------------------------------
+    Anti-wick exit execution constants
+    Execution-side: band-capped, escalating close orders
+    ---------------------------------------------------------------------------
     """
+
+    # Max slippage off the reference price for the first IOC limit step (matches
+    # the spot engine's existing 0.2% cap in orders.py:219-225).
+    _EXIT_MAX_SLIPPAGE_PCT: float = 0.002
+    # How much to widen the cap per escalation step (toward market).
+    _EXIT_ESCALATION_STEP_PCT: float = 0.001
+    # Absolute worst cap before falling back to a market order (0.2 + 3×0.1 = 0.5%).
+    _EXIT_MAX_SLIPPAGE_HARD_PCT: float = 0.005
+    # Seconds to wait for each IOC step to be processed before checking fill.
+    _EXIT_ESCALATION_SLEEP_S: float = 2.0
 
     def __init__(self, key: str, secret: str, passphrase: str) -> None:
         self.DEFAULT_LEVERAGE = 3
@@ -123,10 +139,26 @@ class KucoinFutures(KucoinRest):
         return price_precision
 
     def matching_engine(
-        self, symbol: str, size: float, side: AddOrderReq.SideEnum
-    ) -> float:
-        """
-        Cross spread by 1 tick max
+        self,
+        symbol: str,
+        size: float,
+        side: AddOrderReq.SideEnum,
+        reference_price: float | None = None,
+    ) -> float | None:
+        """Compute a limit price for an immediate reduce-only close.
+
+        Without ``reference_price`` (the legacy path, used for entries):
+        - Crosses the spread by exactly 1 tick (best_ask+tick for BUY,
+          best_bid-tick for SELL) and returns that price unconditionally.
+
+        With ``reference_price`` (the exit / anti-wick path):
+        - Walks book levels to find the price that fills ``size`` contracts.
+        - Clamps the crossing price to a ``_EXIT_MAX_SLIPPAGE_PCT`` band off
+          ``reference_price`` so we never post into a hollow book / wick.
+          SELL: price clamped *up* to ``reference * (1 - pct)``
+          BUY:  price clamped *down* to ``reference * (1 + pct)``
+        - Returns ``None`` when no level fills ``size`` within the band, so
+          callers can escalate (widen the cap) rather than fill into garbage.
         """
         req = (
             GetPartOrderBookReqBuilder()
@@ -137,29 +169,173 @@ class KucoinFutures(KucoinRest):
         book = self.futures_market_api.get_full_order_book(req)
 
         tick = Decimal(str(self._tick_size(symbol)))
+        precision = self._calculate_price_precision(symbol)
 
-        if side == AddOrderReq.SideEnum.BUY:
-            best_ask = Decimal(book.asks[0][0])
-            price = best_ask + tick
+        if reference_price is None:
+            # --- Legacy: 1-tick aggressive cross, no band, always returns a price ---
+            if side == AddOrderReq.SideEnum.BUY:
+                best_ask = Decimal(book.asks[0][0])
+                price = best_ask + tick
+            else:
+                best_bid = Decimal(book.bids[0][0])
+                price = best_bid - tick
+            return float(round_numbers(float(price), precision))
+
+        # --- Anti-wick path: walk levels, clamp to slippage band ---
+        levels = book.bids if side == AddOrderReq.SideEnum.SELL else book.asks
+        if not levels:
+            return None
+
+        # Best price is the first level in the book (bids: highest first,
+        # asks: lowest first per KuCoin API ordering).
+        best_price = float(levels[0][0])
+        if best_price <= 0:
+            return None
+
+        # 1-tick crossing price from the best level
+        if side == AddOrderReq.SideEnum.SELL:
+            crossing = best_price - float(tick)
         else:
-            best_bid = Decimal(book.bids[0][0])
-            price = best_bid - tick
+            crossing = best_price + float(tick)
 
-        final_price = round_numbers(
-            float(price), self._calculate_price_precision(symbol)
-        )
-        return float(final_price)
+        # Slippage cap relative to reference price
+        slippage_pct = self._EXIT_MAX_SLIPPAGE_PCT
+        if side == AddOrderReq.SideEnum.SELL:
+            cap = reference_price * (1.0 - slippage_pct)
+            # SELL: we receive cap or better (higher) — clamp crossing up to cap
+            clamped = max(crossing, cap)
+        else:
+            cap = reference_price * (1.0 + slippage_pct)
+            # BUY: we pay cap or better (lower) — clamp crossing down to cap
+            clamped = min(crossing, cap)
+
+        # Walk levels to verify ``size`` contracts can fill at or better than clamped
+        remaining = float(size)
+        for level_price_raw, level_qty_raw in levels:
+            level_price = float(level_price_raw)
+            level_qty = float(level_qty_raw)
+            if level_qty <= 0:
+                continue
+            # Stop walking if this level is worse than our clamped price
+            if side == AddOrderReq.SideEnum.SELL:
+                if level_price < clamped:
+                    break  # bids are descending; nothing better below
+            else:
+                if level_price > clamped:
+                    break  # asks are ascending; nothing better above
+            remaining -= min(remaining, level_qty)
+            if remaining <= 0:
+                break
+
+        if remaining > 0:
+            # Not enough liquidity within the band
+            return None
+
+        return float(round_numbers(clamped, precision))
+
+    def _close_with_escalation(
+        self,
+        symbol: str,
+        side: AddOrderReq.SideEnum,
+        qty: float,
+        leverage: int,
+        reference_price: float,
+        reduce_only: bool = True,
+    ) -> OrderBase | None:
+        """
+        Place a bounded, escalating reduce-only close order.
+
+        Posts an IOC limit at the slippage-capped price (``_EXIT_MAX_SLIPPAGE_PCT``
+        off ``reference_price``).  If the IOC doesn't fill, widens the cap by
+        ``_EXIT_ESCALATION_STEP_PCT`` per step up to ``_EXIT_ESCALATION_MAX_STEPS``
+        times, then falls back to a plain market order so the exit is guaranteed.
+
+        This prevents closing into a wick (prices clamped to a sane band) while
+        ensuring the position is always eventually closed.
+        """
+        remaining_qty = float(qty)
+        last_order: OrderBase | None = None
+        current_pct = self._EXIT_MAX_SLIPPAGE_PCT
+
+        while current_pct <= self._EXIT_MAX_SLIPPAGE_HARD_PCT:
+            # Derive price from the slippage band; widen each iteration
+            if side == AddOrderReq.SideEnum.SELL:
+                limit_price = reference_price * (1.0 - current_pct)
+            else:
+                limit_price = reference_price * (1.0 + current_pct)
+
+            precision = self._calculate_price_precision(symbol)
+            limit_price = float(round_numbers(limit_price, precision))
+
+            order_resp = self.place_futures_order(
+                symbol=symbol,
+                side=side,
+                size=int(remaining_qty),
+                price=limit_price,
+                leverage=leverage,
+                order_type=OrderType.limit,
+                reduce_only=reduce_only,
+                # IOC: fill what's available immediately, cancel the rest
+                time_in_force=AddOrderReq.TimeInForceEnum.IMMEDIATE_OR_CANCEL,
+            )
+
+            if order_resp and order_resp.order_id:
+                sleep(self._EXIT_ESCALATION_SLEEP_S)
+                try:
+                    details = self.retrieve_order(str(order_resp.order_id))
+                    filled = float(details.filled_size or 0)
+                    remaining_qty -= filled
+                    if filled > 0:
+                        last_order = order_resp
+                except RestError:
+                    pass
+
+            if remaining_qty <= 0:
+                break
+            current_pct += self._EXIT_ESCALATION_STEP_PCT
+
+        if remaining_qty > 0:
+            # Final guaranteed fallback: plain market order for residual
+            market_resp = self.place_futures_order(
+                symbol=symbol,
+                side=side,
+                size=int(remaining_qty),
+                leverage=leverage,
+                order_type=OrderType.market,
+                reduce_only=reduce_only,
+            )
+            if market_resp:
+                last_order = market_resp
+
+        return last_order
 
     def buy(
         self,
         symbol: str,
         qty: float,
         reduce_only: bool = False,
+        reference_price: float | None = None,
     ) -> OrderBase:
+        """Place a futures BUY order.
+
+        When ``reference_price`` is provided the order is a reduce-only exit:
+        a band-capped IOC limit is posted, escalating in steps toward market
+        price to guarantee the position is always closed without chasing a wick.
+
+        Without ``reference_price`` the legacy path is used: a single GTC limit
+        priced by the 1-tick crossing engine (used for base-order entries).
         """
-        Place an order and get the order
-        leverage is set separately via set_futures_leverage
-        """
+        if reference_price is not None:
+            return self._close_with_escalation(
+                symbol=symbol,
+                side=AddOrderReq.SideEnum.BUY,
+                qty=qty,
+                leverage=int(self.DEFAULT_LEVERAGE),
+                reference_price=reference_price,
+                reduce_only=reduce_only,
+            )
+
+        # --- Legacy entry path ---
         price = self.matching_engine(symbol, size=qty, side=AddOrderReq.SideEnum.BUY)
         order_resp = self.place_futures_order(
             symbol=symbol,
@@ -178,8 +354,33 @@ class KucoinFutures(KucoinRest):
         qty: float,
         leverage: int = 1,
         reduce_only: bool = False,
+        reference_price: float | None = None,
     ) -> OrderBase:
+        """Place a futures SELL order.
+
+        When ``reference_price`` is provided the order is a reduce-only exit:
+        a band-capped IOC limit is posted, escalating in steps toward market
+        price to guarantee the position is always closed without chasing a wick.
+
+        Without ``reference_price`` the legacy path is used (GTC limit + market
+        fallback), unchanged from before.
+        """
+        if reference_price is not None:
+            return self._close_with_escalation(
+                symbol=symbol,
+                side=AddOrderReq.SideEnum.SELL,
+                qty=qty,
+                leverage=leverage,
+                reference_price=reference_price,
+                reduce_only=reduce_only,
+            )
+
+        # --- Legacy path ---
         price = self.matching_engine(symbol, size=qty, side=AddOrderReq.SideEnum.SELL)
+        if price is None:
+            raise ValueError(
+                f"matching_engine returned no price for {symbol} sell — order book may be empty"
+            )
         order_resp = self.place_futures_order(
             symbol=symbol,
             side=AddOrderReq.SideEnum.SELL,
@@ -510,6 +711,7 @@ class KucoinFutures(KucoinRest):
         stop: AddOrderReq.StopEnum | None = None,
         stop_price: float | None = None,
         stop_price_type: AddOrderReq.StopPriceTypeEnum | None = None,
+        time_in_force: AddOrderReq.TimeInForceEnum | None = None,
     ) -> OrderBase:
         """Place a Kucoin futures order using the official SDK.
 
@@ -565,6 +767,9 @@ class KucoinFutures(KucoinRest):
 
         if close_order is not None:
             builder = builder.set_close_order(close_order)
+
+        if time_in_force is not None:
+            builder = builder.set_time_in_force(time_in_force)
 
         # Optional stop-loss / take-profit trigger parameters
         if stop is not None:
