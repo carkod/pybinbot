@@ -11,6 +11,83 @@ from pydantic import BaseModel, ConfigDict, Field, create_model
 from pybinbot.shared.enums import ExchangeId
 
 
+class _AssetIndexModel(BaseModel):
+    id: str
+    name: str = ""
+
+
+class _SymbolModel(BaseModel):
+    id: str
+    created_at: int = 0
+    updated_at: int = 0
+    active: bool = True
+    blacklist_reason: str = ""
+    description: str = ""
+    quote_asset: str = ""
+    base_asset: str = ""
+    cooldown: int = 0
+    cooldown_start_ts: int = 0
+    futures_leverage: int = Field(default=1, ge=1, le=3)
+    asset_indices: list[_AssetIndexModel] = []
+    exchange_id: ExchangeId
+    is_margin_trading_allowed: bool = False
+    price_precision: int = 0
+    qty_precision: int = 0
+    min_notional: float = 0
+
+    @classmethod
+    def to_update_payload(cls, **fields: object) -> dict:
+        update_fields = {}
+        for field_name, model_field in cls.model_fields.items():
+            annotation = model_field.annotation
+            if model_field.metadata:
+                annotation = Annotated[annotation, *model_field.metadata]  # type: ignore[assignment]
+            update_fields[field_name] = (annotation | None, None)  # type: ignore[operator]
+        update_model = create_model(  # type: ignore[call-overload]
+            "SymbolModelUpdate",
+            __config__=ConfigDict(extra="forbid"),
+            **update_fields,
+        )
+        return update_model.model_validate(fields).model_dump(
+            mode="json",
+            exclude_unset=True,
+            exclude_none=True,
+        )
+
+
+class _GridDeploymentRequest(BaseModel):
+    pass
+
+
+class _GridLadderRecord(BaseModel):
+    id: str | None = None
+    symbol: str = ""
+    fiat: str = "USDC"
+    exchange: str = "kucoin"
+    market_type: str = "FUTURES"
+    algorithm_name: str = "fixed_grid"
+    status: str = "pending"
+    range_low: float = 90
+    range_high: float = 110
+    grid_step: float = 5
+    level_count: int = 5
+    total_margin: float = 100
+    reserved_margin: float = 0
+    used_margin: float = 0
+    realized_pnl: float = 0
+    unrealized_pnl: float = 0
+    breakout_low: float = 85
+    breakout_high: float = 115
+
+
+class _AutotradeSettingsSchema(BaseModel):
+    fiat: str = "USDC"
+
+
+class _TestAutotradeSettingsSchema(_AutotradeSettingsSchema):
+    pass
+
+
 def load_binbot_api_class():
     pybinbot_stub = types.ModuleType("pybinbot")
 
@@ -25,90 +102,16 @@ def load_binbot_api_class():
 
     models_stub = types.ModuleType("pybinbot.models")
     symbol_stub = types.ModuleType("pybinbot.models.symbol")
-
-    class AssetIndexModel(BaseModel):
-        id: str
-        name: str = ""
-
-    class SymbolModel(BaseModel):
-        id: str
-        created_at: int = 0
-        updated_at: int = 0
-        active: bool = True
-        blacklist_reason: str = ""
-        description: str = ""
-        quote_asset: str = ""
-        base_asset: str = ""
-        cooldown: int = 0
-        cooldown_start_ts: int = 0
-        futures_leverage: int = Field(default=1, ge=1, le=3)
-        asset_indices: list[AssetIndexModel] = []
-        exchange_id: ExchangeId
-        is_margin_trading_allowed: bool = False
-        price_precision: int = 0
-        qty_precision: int = 0
-        min_notional: float = 0
-
-        @classmethod
-        def to_update_payload(cls, **fields):
-            update_fields = {}
-            for field_name, model_field in cls.model_fields.items():
-                annotation = model_field.annotation
-                if model_field.metadata:
-                    annotation = Annotated[annotation, *model_field.metadata]
-                update_fields[field_name] = (annotation | None, None)
-            update_model = create_model(
-                "SymbolModelUpdate",
-                __config__=ConfigDict(extra="forbid"),
-                **update_fields,
-            )
-            return update_model.model_validate(fields).model_dump(
-                mode="json",
-                exclude_unset=True,
-                exclude_none=True,
-            )
-
-    symbol_stub.AssetIndexModel = AssetIndexModel
-    symbol_stub.SymbolModel = SymbolModel
+    symbol_stub.AssetIndexModel = _AssetIndexModel
+    symbol_stub.SymbolModel = _SymbolModel
 
     grid_stub = types.ModuleType("pybinbot.models.grid_ladder")
-
-    class GridDeploymentRequest(BaseModel):
-        pass
-
-    class GridLadderRecord(BaseModel):
-        id: str | None = None
-        symbol: str = ""
-        fiat: str = "USDC"
-        exchange: str = "kucoin"
-        market_type: str = "FUTURES"
-        algorithm_name: str = "fixed_grid"
-        status: str = "pending"
-        range_low: float = 90
-        range_high: float = 110
-        grid_step: float = 5
-        level_count: int = 5
-        total_margin: float = 100
-        reserved_margin: float = 0
-        used_margin: float = 0
-        realized_pnl: float = 0
-        unrealized_pnl: float = 0
-        breakout_low: float = 85
-        breakout_high: float = 115
-
-    grid_stub.GridDeploymentRequest = GridDeploymentRequest
-    grid_stub.GridLadderRecord = GridLadderRecord
+    grid_stub.GridDeploymentRequest = _GridDeploymentRequest
+    grid_stub.GridLadderRecord = _GridLadderRecord
 
     autotrade_stub = types.ModuleType("pybinbot.models.autotrade_settings")
-
-    class AutotradeSettingsSchema(BaseModel):
-        fiat: str = "USDC"
-
-    class TestAutotradeSettingsSchema(AutotradeSettingsSchema):
-        pass
-
-    autotrade_stub.AutotradeSettingsSchema = AutotradeSettingsSchema
-    autotrade_stub.TestAutotradeSettingsSchema = TestAutotradeSettingsSchema
+    autotrade_stub.AutotradeSettingsSchema = _AutotradeSettingsSchema
+    autotrade_stub.TestAutotradeSettingsSchema = _TestAutotradeSettingsSchema
 
     handlers_stub = types.ModuleType("pybinbot.shared.handlers")
     handlers_stub.handle_binbot_errors = lambda response: response
