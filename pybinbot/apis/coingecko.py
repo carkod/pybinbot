@@ -1,5 +1,3 @@
-import time
-
 import requests
 from pandas import DataFrame, to_datetime
 
@@ -7,14 +5,7 @@ from pandas import DataFrame, to_datetime
 class CoinGecko:
     """
     CoinGecko API client for fetching cryptocurrency data.
-
-    _btc_ohlc_cache maps days → (fetched_at_unix, DataFrame). CoinGecko only refreshes
-    the /ohlc endpoint every 30 minutes, so there is no benefit to calling it more
-    often than that.
     """
-
-    _btc_ohlc_cache: dict[int, tuple[float, DataFrame]] = {}
-    _BTC_OHLC_TTL = 1800
 
     def __init__(self):
         self.base_url = "https://api.coingecko.com/api/v3"
@@ -61,12 +52,6 @@ class CoinGecko:
             DataFrame with columns [open_time, open, high, low, close],
             indexed by a UTC DatetimeIndex derived from open_time.
         """
-        now = time.time()
-        if days in CoinGecko._btc_ohlc_cache:
-            fetched_at, cached_df = CoinGecko._btc_ohlc_cache[days]
-            if now - fetched_at < CoinGecko._BTC_OHLC_TTL:
-                return cached_df
-
         url = f"{self.base_url}/coins/bitcoin/ohlc"
         r = requests.get(
             url, params={"vs_currency": "usd", "days": str(days)}, timeout=15
@@ -77,6 +62,4 @@ class CoinGecko:
         df["timestamp"] = to_datetime(df["open_time"], unit="ms", utc=True)
         df.set_index("timestamp", inplace=True)
         df.sort_index(inplace=True)
-
-        CoinGecko._btc_ohlc_cache[days] = (now, df)
         return df
