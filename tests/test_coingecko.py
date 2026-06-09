@@ -25,13 +25,16 @@ def test_get_btc_ohlc_fetches_each_history_range_without_caching(monkeypatch):
         call(
             "https://api.coingecko.com/api/v3/coins/bitcoin/ohlc",
             params={"vs_currency": "usd", "days": "2"},
+            timeout=15,
         ),
         call(
             "https://api.coingecko.com/api/v3/coins/bitcoin/ohlc",
             params={"vs_currency": "usd", "days": "30"},
+            timeout=15,
         ),
         call(
             "https://api.coingecko.com/api/v3/coins/bitcoin/ohlc",
             params={"vs_currency": "usd", "days": "2"},
+            timeout=15,
         ),
     ]
