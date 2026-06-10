@@ -57,7 +57,7 @@ from pybinbot.shared.handlers import (
     aio_response_handler,
     handle_binbot_errors,
 )
-from pybinbot.models.bot_base import BotBase
+from pybinbot.models.bot_base import BotBase, RecoveryParams
 from pybinbot.models.deal import DealBase
 from pybinbot.models.order import OrderBase
 from pybinbot.models.autotrade_settings import (
@@ -129,6 +129,7 @@ __all__ = [
     "apis",
     # models
     "BotBase",
+    "RecoveryParams",
     "OrderBase",
     "DealBase",
     "SymbolModel",

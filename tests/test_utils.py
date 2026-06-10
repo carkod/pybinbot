@@ -1,4 +1,4 @@
-from pybinbot.models.bot_base import BotBase
+from pybinbot.models.bot_base import BotBase, RecoveryParams
 from pybinbot.shared.utils import convert_to_kucoin_symbol, convert_from_kucoin_symbol
 from pybinbot.shared.enums import QuoteAssets, MarketType
 
@@ -47,3 +47,18 @@ class TestConvertFromKucoinSymbol:
 
     def test_converts_lowercase_symbol(self) -> None:
         assert convert_from_kucoin_symbol("eth-usdt") == "ethusdt"
+
+
+def test_bot_base_recovery_params_are_optional_and_serialized() -> None:
+    bot = BotBase(pair="BTCUSDT")
+
+    assert bot.recovery_params is None
+
+    bot.recovery_params = RecoveryParams(reversal_path="source")
+
+    assert bot.model_dump()["recovery_params"] == {
+        "reversal_path": "source",
+        "source_contracts": 0,
+        "source_loss_fiat": 0,
+        "stop_loss_pct": 0,
+    }

@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator
 
 from pybinbot.shared.enums import (
@@ -10,6 +12,13 @@ from pybinbot.shared.enums import (
 )
 from pybinbot.shared.timestamps import timestamp, ts_to_humandate
 from pybinbot.shared.types import Amount
+
+
+class RecoveryParams(BaseModel):
+    reversal_path: Literal["source", "recovery"] = "source"
+    source_contracts: float = Field(default=0, ge=0)
+    source_loss_fiat: float = Field(default=0, ge=0)
+    stop_loss_pct: float = Field(default=0, ge=0)
 
 
 class BotBase(BaseModel):
@@ -46,6 +55,7 @@ class BotBase(BaseModel):
         default=False,
         description="Autoswitch from long to short or short to long strategy",
     )
+    recovery_params: RecoveryParams | None = None
     take_profit: Amount = Field(default=0, ge=-1, le=101)
     trailing: bool = Field(default=False)
     trailing_deviation: Amount = Field(
@@ -84,6 +94,7 @@ class BotBase(BaseModel):
                     "trailing_deviation": 0.63,
                     "trailing_profit": 2.3,
                     "margin_short_reversal": False,
+                    "recovery_params": None,
                     "position": "long",
                 }
             ],
