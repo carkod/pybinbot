@@ -318,6 +318,7 @@ class KucoinFutures(KucoinRest):
         qty: float,
         reduce_only: bool = False,
         reference_price: float | None = None,
+        entry_limit_price: float | None = None,
     ) -> OrderBase:
         """Place a futures BUY order.
 
@@ -325,9 +326,17 @@ class KucoinFutures(KucoinRest):
         a band-capped IOC limit is posted, escalating in steps toward market
         price to guarantee the position is always closed without chasing a wick.
 
+        When ``entry_limit_price`` is provided the order is a GTC entry limit
+        with no market fallback.
+
         Without ``reference_price`` the legacy path is used: a single GTC limit
         priced by the 1-tick crossing engine (used for base-order entries).
         """
+        if reference_price is not None and entry_limit_price is not None:
+            raise ValueError(
+                "reference_price and entry_limit_price are mutually exclusive"
+            )
+
         if reference_price is not None:
             return self._close_with_escalation(
                 symbol=symbol,
@@ -336,6 +345,21 @@ class KucoinFutures(KucoinRest):
                 leverage=int(self.DEFAULT_LEVERAGE),
                 reference_price=reference_price,
                 reduce_only=reduce_only,
+            )
+
+        if entry_limit_price is not None:
+            if entry_limit_price <= 0:
+                raise ValueError("entry_limit_price must be greater than 0")
+            return self.place_futures_order(
+                symbol=symbol,
+                side=AddOrderReq.SideEnum.BUY,
+                size=int(qty),
+                price=entry_limit_price,
+                leverage=int(self.DEFAULT_LEVERAGE),
+                order_type=OrderType.limit,
+                reduce_only=reduce_only,
+                time_in_force=AddOrderReq.TimeInForceEnum.GOOD_TILL_CANCELED,
+                allow_market_fallback=False,
             )
 
         # --- Legacy entry path ---
@@ -358,6 +382,7 @@ class KucoinFutures(KucoinRest):
         leverage: int = 1,
         reduce_only: bool = False,
         reference_price: float | None = None,
+        entry_limit_price: float | None = None,
     ) -> OrderBase:
         """Place a futures SELL order.
 
@@ -365,9 +390,17 @@ class KucoinFutures(KucoinRest):
         a band-capped IOC limit is posted, escalating in steps toward market
         price to guarantee the position is always closed without chasing a wick.
 
+        When ``entry_limit_price`` is provided the order is a GTC entry limit
+        with no market fallback.
+
         Without ``reference_price`` the legacy path is used (GTC limit + market
         fallback), unchanged from before.
         """
+        if reference_price is not None and entry_limit_price is not None:
+            raise ValueError(
+                "reference_price and entry_limit_price are mutually exclusive"
+            )
+
         if reference_price is not None:
             return self._close_with_escalation(
                 symbol=symbol,
@@ -376,6 +409,21 @@ class KucoinFutures(KucoinRest):
                 leverage=leverage,
                 reference_price=reference_price,
                 reduce_only=reduce_only,
+            )
+
+        if entry_limit_price is not None:
+            if entry_limit_price <= 0:
+                raise ValueError("entry_limit_price must be greater than 0")
+            return self.place_futures_order(
+                symbol=symbol,
+                side=AddOrderReq.SideEnum.SELL,
+                size=qty,
+                price=entry_limit_price,
+                leverage=leverage,
+                order_type=OrderType.limit,
+                reduce_only=reduce_only,
+                time_in_force=AddOrderReq.TimeInForceEnum.GOOD_TILL_CANCELED,
+                allow_market_fallback=False,
             )
 
         # --- Legacy path ---
@@ -715,6 +763,7 @@ class KucoinFutures(KucoinRest):
         stop_price: float | None = None,
         stop_price_type: AddOrderReq.StopPriceTypeEnum | None = None,
         time_in_force: AddOrderReq.TimeInForceEnum | None = None,
+        allow_market_fallback: bool = True,
     ) -> OrderBase:
         """Place a Kucoin futures order using the official SDK.
 
@@ -733,7 +782,8 @@ class KucoinFutures(KucoinRest):
             stop_price: Optional stop trigger price. Required when stop is set.
             stop_price_type: Optional stop price type (TP/MP/IP). Required when
                 stop is set.
-            client_oid: Optional client order id; if omitted a UUID is generated.
+            allow_market_fallback: Whether a rejected order submission may retry
+                as a market order.
         """
 
         client_oid = str(uuid4())
@@ -788,14 +838,20 @@ class KucoinFutures(KucoinRest):
         order_resp = self.futures_order_api.add_order(req)
 
         if not order_resp or not order_resp.order_id:
+            if not allow_market_fallback:
+                raise RuntimeError(
+                    f"Limit entry order was not accepted for {symbol}; market fallback is disabled"
+                )
             order_resp = self.place_futures_order(
                 symbol=symbol,
-                side=AddOrderReq.SideEnum.BUY,
+                side=side,
                 size=int(size),
-                price=price,
-                leverage=int(self.DEFAULT_LEVERAGE),
+                leverage=leverage,
                 order_type=OrderType.market,
                 reduce_only=reduce_only,
+                close_order=close_order,
+                margin_mode=None,
+                allow_market_fallback=False,
             )
 
         # Small delay to allow order to be processed and show up in order details endpoint;
