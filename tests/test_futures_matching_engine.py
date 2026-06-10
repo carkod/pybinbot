@@ -25,7 +25,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
-from pybinbot import KucoinFutures, OrderStatus, DealType
+from pybinbot import KucoinFutures, OrderStatus, OrderType, DealType
 from pybinbot.models.order import OrderBase
 from pybinbot.shared.maths import round_numbers
 
@@ -42,6 +42,7 @@ FHEU_PREC = 5
 def _make_futures(tick_size: float = FHEU_TICK, precision: int = FHEU_PREC) -> Any:
     """Bypass KucoinFutures.__init__ to avoid SDK side effects."""
     f = object.__new__(KucoinFutures)
+    f.DEFAULT_LEVERAGE = 2
     f._tick_size = MagicMock(return_value=tick_size)  # type: ignore[method-assign]
     f._calculate_price_precision = MagicMock(return_value=precision)  # type: ignore[method-assign]
     return f
@@ -98,6 +99,97 @@ def test_legacy_path_sell_crosses_spread_by_one_tick():
     # SELL legacy: best_bid - tick = 0.02340 - 0.00001 = 0.02339
     result = f.matching_engine("FHEUSDTM", size=8, side=AddOrderReq.SideEnum.SELL)
     assert result == pytest.approx(0.02339, abs=1e-6)
+
+
+# ---------------------------------------------------------------------------
+# body-capped entry limits
+# ---------------------------------------------------------------------------
+
+
+def test_buy_entry_limit_uses_gtc_without_matching_engine_or_market_fallback():
+    f = _make_futures()
+    expected = _order_base("entry-buy", 0.00625, 0, side="buy")
+    f.place_futures_order = MagicMock(return_value=expected)
+    f.matching_engine = MagicMock()
+
+    result = f.buy(
+        "KATUSDTM",
+        qty=150,
+        entry_limit_price=0.00625,
+    )
+
+    assert result is expected
+    f.matching_engine.assert_not_called()
+    f.place_futures_order.assert_called_once_with(
+        symbol="KATUSDTM",
+        side=AddOrderReq.SideEnum.BUY,
+        size=150,
+        price=0.00625,
+        leverage=2,
+        order_type=OrderType.limit,
+        reduce_only=False,
+        time_in_force=AddOrderReq.TimeInForceEnum.GOOD_TILL_CANCELED,
+        allow_market_fallback=False,
+    )
+
+
+def test_sell_entry_limit_uses_gtc_without_matching_engine_or_market_fallback():
+    f = _make_futures()
+    expected = _order_base("entry-sell", 0.00615, 0, side="sell")
+    f.place_futures_order = MagicMock(return_value=expected)
+    f.matching_engine = MagicMock()
+
+    result = f.sell(
+        "KATUSDTM",
+        qty=150,
+        leverage=2,
+        entry_limit_price=0.00615,
+    )
+
+    assert result is expected
+    f.matching_engine.assert_not_called()
+    f.place_futures_order.assert_called_once_with(
+        symbol="KATUSDTM",
+        side=AddOrderReq.SideEnum.SELL,
+        size=150,
+        price=0.00615,
+        leverage=2,
+        order_type=OrderType.limit,
+        reduce_only=False,
+        time_in_force=AddOrderReq.TimeInForceEnum.GOOD_TILL_CANCELED,
+        allow_market_fallback=False,
+    )
+
+
+def test_entry_limit_and_exit_reference_are_mutually_exclusive():
+    f = _make_futures()
+
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        f.buy(
+            "KATUSDTM",
+            qty=150,
+            reference_price=0.0062,
+            entry_limit_price=0.00625,
+        )
+
+
+def test_place_futures_order_does_not_market_fallback_when_disabled():
+    f = _make_futures()
+    f.set_futures_margin_mode = MagicMock()
+    f.futures_order_api = MagicMock()
+    f.futures_order_api.add_order.return_value = None
+
+    with pytest.raises(RuntimeError, match="market fallback is disabled"):
+        f.place_futures_order(
+            symbol="KATUSDTM",
+            side=AddOrderReq.SideEnum.BUY,
+            size=150,
+            price=0.00625,
+            leverage=2,
+            allow_market_fallback=False,
+        )
+
+    f.futures_order_api.add_order.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
