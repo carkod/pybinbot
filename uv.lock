@@ -1068,7 +1068,7 @@ wheels = [
 
 [[package]]
 name = "pybinbot"
-version = "1.9.30"
+version = "1.9.31"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -1081,6 +1081,7 @@ dependencies = [
     { name = "pydantic", extra = ["email"] },
     { name = "python-dotenv" },
     { name = "requests" },
+    { name = "websocket-client" },
 ]
 
 [package.optional-dependencies]
@@ -1122,6 +1123,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.11.12" },
     { name = "types-python-dateutil", marker = "extra == 'dev'" },
     { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.32.4.20260107" },
+    { name = "websocket-client", specifier = ">=1.9.0" },
 ]
 provides-extras = ["dev"]
 
