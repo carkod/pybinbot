@@ -11,7 +11,6 @@ class DealType(str, Enum):
     trailing_profit = "trailing_profit"
     conversion = "conversion"  # converts one crypto to another
     algorithmic_close = "algorithmic_close"
-    short = "short"  # replaces margin_short for spot, margin and futures
 
 
 class CloseConditions(str, Enum):
