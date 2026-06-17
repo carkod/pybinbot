@@ -53,6 +53,12 @@ class KucoinApi(KucoinOrders):
     def get_ticker_price(self, symbol: str) -> float:
         request = GetPartOrderBookReqBuilder().set_symbol(symbol).set_size("1").build()
         response = self.spot_api.get_ticker(request)
+        if response is None:
+            raise ValueError(f"KuCoin spot ticker returned no response for {symbol}")
+        if response.price is None:
+            raise ValueError(
+                f"KuCoin spot ticker returned no price for {symbol}: {response!r}"
+            )
         return float(response.price)
 
     def get_spot_ledger(self, current_page: int, page_size: int) -> GetSpotLedgerResp:

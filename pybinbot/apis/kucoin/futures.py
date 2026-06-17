@@ -22,6 +22,7 @@ from kucoin_universal_sdk.generate.account.transfer.model_flex_transfer_req impo
 )
 from kucoin_universal_sdk.generate.futures.market import (
     GetKlinesReqBuilder,
+    GetMarkPriceReqBuilder,
     GetSymbolReqBuilder,
     GetPartOrderBookReqBuilder,
     GetSymbolResp,
@@ -119,6 +120,19 @@ class KucoinFutures(KucoinRest):
     def get_symbol_info(self, symbol: str) -> GetSymbolResp:
         req = GetSymbolReqBuilder().set_symbol(symbol).build()
         return self.futures_market_api.get_symbol(req)
+
+    def get_mark_price(self, symbol: str) -> float:
+        req = GetMarkPriceReqBuilder().set_symbol(symbol).build()
+        response = self.futures_market_api.get_mark_price(req)
+        if response is None:
+            raise ValueError(
+                f"KuCoin futures mark price returned no response for {symbol}"
+            )
+        if response.value is None:
+            raise ValueError(
+                f"KuCoin futures mark price returned no value for {symbol}: {response!r}"
+            )
+        return float(response.value)
 
     def _tick_size(self, symbol: str) -> float:
         """
