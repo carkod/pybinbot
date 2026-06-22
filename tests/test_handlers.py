@@ -275,6 +275,7 @@ class TestHandleBinbotErrors:
         mock_response.headers = {"content-type": "text/plain; charset=utf-8"}
         mock_response.url = "https://api.terminal.binbot.in/account/kucoin-balance"
         mock_response.text = "upstream rate limit"
+        mock_response.content = b"upstream rate limit"
         mock_response.json.side_effect = ValueError("Expecting value")
 
         with patch("pybinbot.shared.handlers.logging") as mock_logging:
@@ -288,3 +289,27 @@ class TestHandleBinbotErrors:
             assert "text/plain" in log_args
             assert "upstream rate limit" in log_args
             assert "/account/kucoin-balance" in log_args
+
+    def test_empty_body_raises_binbot_errors_not_json_decode_error(self):
+        mock_response = MagicMock(spec=Response)
+        mock_response.status_code = 500
+        mock_response.reason = "Internal Server Error"
+        mock_response.headers = {"content-type": "text/html"}
+        mock_response.url = "https://api.terminal.binbot.in/bots"
+        mock_response.text = ""
+        mock_response.content = b""
+
+        with pytest.raises(BinbotErrors, match="Empty response body"):
+            handle_binbot_errors(mock_response)
+
+    def test_empty_body_on_5xx_raises_binbot_errors(self):
+        mock_response = MagicMock(spec=Response)
+        mock_response.status_code = 503
+        mock_response.reason = "Service Unavailable"
+        mock_response.headers = {}
+        mock_response.url = "https://api.terminal.binbot.in/bots"
+        mock_response.text = ""
+        mock_response.content = b""
+
+        with pytest.raises(BinbotErrors, match="Empty response body"):
+            handle_binbot_errors(mock_response)

@@ -116,6 +116,12 @@ def handle_binbot_errors(response: Response) -> dict[Any, Any]:
         _log_binbot_response(response, "Binbot API returned 404")
         raise HTTPError(response=response)
 
+    if not response.content:
+        _log_binbot_response(response, "Binbot API returned empty body")
+        raise BinbotErrors(
+            f"Empty response body from binbot API (HTTP {response.status_code})"
+        )
+
     try:
         content = response.json()
     except Exception:
