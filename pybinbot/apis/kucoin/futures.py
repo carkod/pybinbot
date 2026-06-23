@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 from pybinbot import KucoinRest, KucoinKlineIntervals, OrderType, OrderStatus, DealType
 from requests import HTTPError, request
@@ -607,6 +608,9 @@ class KucoinFutures(KucoinRest):
 
         request = builder.build()
         response = self.futures_market_api.get_klines(request)
+        self.check_rate_limit(
+            response.common_response.rate_limit.remaining, "get_klines"
+        )
 
         # --- Parse response ---
         klines: list[Kline] = []
@@ -685,6 +689,13 @@ class KucoinFutures(KucoinRest):
                 params=params,
                 timeout=15,
             )
+            if response.status_code == 429:
+                logging.warning(
+                    "KuCoin dashboard klines rate limit hit (429) for %s %s — backing off 5 s",
+                    symbol,
+                    interval,
+                )
+                raise HTTPError(response=response)
             if response.status_code >= 400:
                 raise HTTPError(response=response)
 
