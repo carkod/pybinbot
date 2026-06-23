@@ -60,7 +60,7 @@ class BinbotApi:
         self.bb_top_gainers = f"{bb_base_url}/charts/top-gainers"
         self.bb_top_losers = f"{bb_base_url}/charts/top-losers"
         self.bb_timeseries_url = f"{bb_base_url}/charts/timeseries"
-        self.bb_adr_series_url = f"{bb_base_url}/charts/adr-series"
+        self.bb_market_breadth_url = f"{bb_base_url}/charts/market-breadth"
         self.bb_signals_url = f"{bb_base_url}/signals"
         self.bb_grid_ladders_url = f"{bb_base_url}/grid-ladders"
         self.bb_active_grid_ladders_url = f"{bb_base_url}/grid-ladders/active"
@@ -250,7 +250,7 @@ class BinbotApi:
         """
         Get market breadth data
         """
-        response = await self.fetch(url=self.bb_adr_series_url, params={"size": size})
+        response = await self.fetch(url=self.bb_market_breadth_url, params={"size": size})
         if "data" in response:
             return response["data"]
         return None
