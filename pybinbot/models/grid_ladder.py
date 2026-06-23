@@ -42,8 +42,8 @@ class GridOrderRole(str, Enum):
 class GridDeploymentRequest(BaseModel):
     symbol: str
     fiat: str
-    exchange: ExchangeId | str
-    market_type: MarketType | str
+    exchange: ExchangeId
+    market_type: MarketType
     algorithm_name: str
     generated_at: datetime
     range_low: float = Field(gt=0)
@@ -65,7 +65,6 @@ class GridDeploymentRequest(BaseModel):
     model_config = ConfigDict(
         extra="allow",
         from_attributes=True,
-        use_enum_values=True,
     )
 
     @model_validator(mode="after")

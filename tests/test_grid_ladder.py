@@ -7,6 +7,7 @@ from pybinbot.apis.binbot.base import BinbotApi
 from pybinbot.models.bot_base import BotBase
 from pybinbot.models.grid_ladder import GridDeploymentRequest, GridLadderRecord
 from pybinbot.models.signals import SignalsConsumer
+from pybinbot.shared.enums import ExchangeId, MarketType
 
 
 def valid_grid_payload() -> dict:
@@ -55,8 +56,19 @@ def test_grid_deployment_request_accepts_valid_five_level_ladder() -> None:
     deployment = GridDeploymentRequest(**valid_grid_payload())
 
     assert deployment.symbol == "BTCUSDC"
+    assert deployment.exchange is ExchangeId.KUCOIN
+    assert deployment.market_type is MarketType.SPOT
     assert deployment.level_count == 5
     assert deployment.total_margin == 100.0
+
+
+def test_grid_deployment_request_serializes_enums_as_values() -> None:
+    deployment = GridDeploymentRequest(**valid_grid_payload())
+
+    data = deployment.model_dump(mode="json")
+
+    assert data["exchange"] == "kucoin"
+    assert data["market_type"] == "SPOT"
 
 
 def test_signals_consumer_accepts_normal_bot_signal_unchanged() -> None:
