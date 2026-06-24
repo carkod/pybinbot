@@ -58,6 +58,20 @@ from pybinbot.shared.handlers import (
     handle_binbot_errors,
 )
 from pybinbot.models.bot_base import BotBase, RecoveryParams
+from pybinbot.models.bot import (
+    AlgoRankingItem,
+    BotDataErrorResponse,
+    BotListResponse,
+    BotModel,
+    BotPairsList,
+    BotResponse,
+    BulkDeleteRequest,
+    DealModel,
+    ErrorsRequestBody,
+    GetBotParams,
+    OrderModel,
+    RecoveryBotModel,
+)
 from pybinbot.models.deal import DealBase
 from pybinbot.models.order import OrderBase
 from pybinbot.models.autotrade_settings import (
@@ -128,10 +142,22 @@ __all__ = [
     "models",
     "apis",
     # models
+    "AlgoRankingItem",
+    "BotDataErrorResponse",
     "BotBase",
+    "BotListResponse",
+    "BotModel",
+    "BotPairsList",
+    "BotResponse",
+    "BulkDeleteRequest",
     "RecoveryParams",
     "OrderBase",
+    "OrderModel",
+    "RecoveryBotModel",
     "DealBase",
+    "DealModel",
+    "ErrorsRequestBody",
+    "GetBotParams",
     "SymbolModel",
     "AssetIndexModel",
     "StandardResponse",
