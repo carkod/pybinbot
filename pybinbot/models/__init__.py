@@ -5,6 +5,21 @@ from pybinbot.models.autotrade_settings import (
     TestAutotradeSettingsSchema,
 )
 from pybinbot.models.bot_base import BotBase, RecoveryParams
+from pybinbot.models.symbol import AssetIndexModel, SymbolModel
+from pybinbot.models.bot import (
+    AlgoRankingItem,
+    BotDataErrorResponse,
+    BotListResponse,
+    BotModel,
+    BotPairsList,
+    BotResponse,
+    BulkDeleteRequest,
+    DealModel,
+    ErrorsRequestBody,
+    GetBotParams,
+    OrderModel,
+    RecoveryBotModel,
+)
 from pybinbot.models.grid_ladder import (
     GridDeploymentRequest,
     GridLadderCloseRequest,
@@ -23,7 +38,18 @@ __all__ = [
     "AutotradeSettings",
     "AutotradeSettingsResponse",
     "AutotradeSettingsSchema",
+    "AlgoRankingItem",
+    "AssetIndexModel",
+    "BotDataErrorResponse",
     "BotBase",
+    "BotListResponse",
+    "BotModel",
+    "BotPairsList",
+    "BotResponse",
+    "BulkDeleteRequest",
+    "DealModel",
+    "ErrorsRequestBody",
+    "GetBotParams",
     "GridDeploymentRequest",
     "GridLadderCloseRequest",
     "GridLadderListResponse",
@@ -35,6 +61,9 @@ __all__ = [
     "GridOrderRecord",
     "GridOrderRole",
     "GridSignalKind",
+    "OrderModel",
     "RecoveryParams",
+    "RecoveryBotModel",
+    "SymbolModel",
     "TestAutotradeSettingsSchema",
 ]

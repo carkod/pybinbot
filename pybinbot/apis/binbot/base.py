@@ -4,16 +4,20 @@ from typing import Any
 from aiohttp import ClientSession
 from pybinbot import ExchangeId, Status
 from requests import Session
-from pybinbot.shared.handlers import handle_binbot_errors, aio_response_handler
-from pybinbot.apis.binance.base import BinanceApi
-from datetime import datetime, timezone
-from dateutil.parser import parse
-from pybinbot.models.symbol import AssetIndexModel, SymbolModel
-from pybinbot.models.autotrade_settings import (
+from pybinbot import (
+    handle_binbot_errors,
+    aio_response_handler,
+    BinanceApi,
+    AssetIndexModel,
+    SymbolModel,
     AutotradeSettingsSchema,
     TestAutotradeSettingsSchema,
+    BotModel,
+    GridDeploymentRequest,
+    GridLadderRecord,
 )
-from pybinbot.models.grid_ladder import GridDeploymentRequest, GridLadderRecord
+from datetime import datetime, timezone
+from dateutil.parser import parse
 
 logger = logging.getLogger(__name__)
 
@@ -181,13 +185,38 @@ class BinbotApi:
                 data = await aio_response_handler(response)
                 return data
 
-    def get_symbols(self) -> list[dict]:
-        response = self.request(url=self.bb_symbols)
-        return response["data"]
+    @staticmethod
+    def _symbol_model(data: dict) -> SymbolModel:
+        payload = dict(data)
+        if "id" not in payload and "symbol" in payload:
+            payload["id"] = payload["symbol"]
+        return SymbolModel.model_validate(payload)
 
-    def get_single_symbol(self, symbol: str) -> dict:
+    @classmethod
+    def _symbol_models(cls, data: list[dict] | None) -> list[SymbolModel]:
+        return [cls._symbol_model(item) for item in (data or [])]
+
+    def get_symbols(self) -> list[SymbolModel]:
+        response = self.request(url=self.bb_symbols)
+        return self._symbol_models(response["data"])
+
+    def get_single_symbol(self, symbol: str) -> SymbolModel:
         response = self.request(url=f"{self.bb_one_symbol_url}/{symbol}")
-        return response["data"]
+        return self._symbol_model(response["data"])
+
+    @staticmethod
+    def _bot_model(data: dict | None) -> BotModel | None:
+        if data is None:
+            return None
+        return BotModel.model_validate(data)
+
+    @classmethod
+    def _bot_models(cls, data: list[dict] | None) -> list[BotModel]:
+        return [
+            bot
+            for bot in (cls._bot_model(item) for item in (data or []))
+            if bot is not None
+        ]
 
     def edit_symbol(
         self,
@@ -209,7 +238,7 @@ class BinbotApi:
         price_precision: int | None = None,
         qty_precision: int | None = None,
         min_notional: float | None = None,
-    ) -> dict:
+    ) -> SymbolModel:
         """
         PUT /symbol — update a symbol row.
 
@@ -240,17 +269,20 @@ class BinbotApi:
             method="PUT",
             json=payload,
         )
-        return response["data"]
+        response_data = {**payload, **response["data"]}
+        return self._symbol_model(response_data)
 
-    def get_bot_by_symbol(self, symbol: str) -> dict:
+    def get_bot_by_symbol(self, symbol: str) -> BotModel | None:
         response = self.request(url=f"{self.bb_bot_url}/symbol/{symbol}")
-        return response["data"]
+        return self._bot_model(response["data"])
 
     async def get_market_breadth(self, size=400):
         """
         Get market breadth data
         """
-        response = await self.fetch(url=self.bb_market_breadth_url, params={"size": size})
+        response = await self.fetch(
+            url=self.bb_market_breadth_url, params={"size": size}
+        )
         if "data" in response:
             return response["data"]
         return None
@@ -376,7 +408,7 @@ class BinbotApi:
 
     def get_bots_by_name(
         self, name: str, symbol: str, collection_name="bots"
-    ) -> list[dict]:
+    ) -> list[BotModel]:
         url = self.bb_bot_url
         if collection_name == "paper_trading":
             url = self.bb_test_bot_url
@@ -385,7 +417,7 @@ class BinbotApi:
             url=url,
             params={"bot_name": name, "symbol": symbol, "status": Status.active.value},
         )
-        return data["data"]
+        return self._bot_models(data["data"])
 
     def get_bots_by_status(
         self,
@@ -393,20 +425,21 @@ class BinbotApi:
         end_date,
         collection_name="bots",
         status=Status.active,
-    ):
+    ) -> list[BotModel]:
         url = self.bb_bot_url
         if collection_name == "paper_trading":
             url = self.bb_test_bot_url
 
+        status_value = status.value if isinstance(status, Status) else status
         data = self.request(
             url=url,
             params={
-                "status": status.value,
+                "status": status_value,
                 "start_date": start_date,
                 "end_date": end_date,
             },
         )
-        return data["data"]
+        return self._bot_models(data["data"])
 
     def submit_bot_event_logs(self, bot_id: str, message: str | list[str]) -> dict:
         """
@@ -499,7 +532,7 @@ class BinbotApi:
         )
         return response
 
-    def get_active_pairs(self, collection_name="bots"):
+    def get_active_pairs(self, collection_name="bots") -> list[str]:
         """
         Get distinct (non-repeating) bots by status active
         """
@@ -531,10 +564,10 @@ class BinbotApi:
 
         for s in all_symbols:
             for ap in active_pairs:
-                if (
-                    ap.startswith(s["base_asset"]) and s["id"] not in exclusion_list
-                ) or (not s["active"]):
-                    exclusion_list.append(s["id"])
+                if (ap.startswith(s.base_asset) and s.id not in exclusion_list) or (
+                    not s.active
+                ):
+                    exclusion_list.append(s.id)
 
         return exclusion_list
 
@@ -620,11 +653,11 @@ class BinbotApi:
         Get price decimals from API db
         """
         symbol_info = self.get_single_symbol(symbol)
-        return symbol_info["price_precision"]
+        return symbol_info.price_precision
 
     def qty_precision(self, symbol) -> int:
         """
         Get qty decimals from API db
         """
         symbol_info = self.get_single_symbol(symbol)
-        return symbol_info["qty_precision"]
+        return symbol_info.qty_precision
