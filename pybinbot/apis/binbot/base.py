@@ -14,7 +14,7 @@ from pybinbot import (
     TestAutotradeSettingsSchema,
     BotModel,
     GridDeploymentRequest,
-    GridLadderRecord
+    GridLadderRecord,
 )
 from datetime import datetime, timezone
 from dateutil.parser import parse
