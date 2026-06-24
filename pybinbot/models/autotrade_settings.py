@@ -1,6 +1,4 @@
 from time import time
-from typing import Any
-
 from pydantic import BaseModel, ConfigDict, Field
 
 from pybinbot.models.routes import StandardResponse
@@ -46,12 +44,6 @@ class AutotradeSettingsSchema(BaseModel):
     )
 
     model_config = ConfigDict(extra="allow", from_attributes=True, use_enum_values=True)
-
-    def __getitem__(self, key: str) -> Any:
-        return getattr(self, key)
-
-    def get(self, key: str, default: Any = None) -> Any:
-        return getattr(self, key, default)
 
 
 class AutotradeSettingsResponse(StandardResponse):

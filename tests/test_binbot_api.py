@@ -103,6 +103,13 @@ def load_binbot_api_class():
 
     pybinbot_stub.ExchangeId = ExchangeId
     pybinbot_stub.Status = Status
+    pybinbot_stub.AssetIndexModel = _AssetIndexModel
+    pybinbot_stub.SymbolModel = _SymbolModel
+    pybinbot_stub.AutotradeSettingsSchema = _AutotradeSettingsSchema
+    pybinbot_stub.TestAutotradeSettingsSchema = _TestAutotradeSettingsSchema
+    pybinbot_stub.BotModel = _BotModel
+    pybinbot_stub.GridDeploymentRequest = _GridDeploymentRequest
+    pybinbot_stub.GridLadderRecord = _GridLadderRecord
 
     models_stub = types.ModuleType("pybinbot.models")
     symbol_stub = types.ModuleType("pybinbot.models.symbol")
@@ -127,6 +134,8 @@ def load_binbot_api_class():
         return response
 
     handlers_stub.aio_response_handler = aio_response_handler
+    pybinbot_stub.handle_binbot_errors = handlers_stub.handle_binbot_errors
+    pybinbot_stub.aio_response_handler = aio_response_handler
 
     binance_stub = types.ModuleType("pybinbot.apis.binance.base")
 
@@ -135,6 +144,7 @@ def load_binbot_api_class():
             return {"priceChangePercent": "0"}
 
     binance_stub.BinanceApi = BinanceApi
+    pybinbot_stub.BinanceApi = BinanceApi
 
     module_path = (
         Path(__file__).resolve().parents[1] / "pybinbot" / "apis" / "binbot" / "base.py"

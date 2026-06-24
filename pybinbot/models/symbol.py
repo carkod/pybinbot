@@ -59,15 +59,6 @@ class SymbolModel(BaseModel):
 
     _update_model: ClassVar[type[BaseModel] | None] = None
 
-    def __getitem__(self, key: str) -> Any:
-        return getattr(self, key)
-
-    def __setitem__(self, key: str, value: Any) -> None:
-        setattr(self, key, value)
-
-    def get(self, key: str, default: Any = None) -> Any:
-        return getattr(self, key, default)
-
     @classmethod
     def update_model(cls) -> type[BaseModel]:
         if cls._update_model is None:
