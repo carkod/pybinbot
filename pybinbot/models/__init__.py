@@ -5,6 +5,7 @@ from pybinbot.models.autotrade_settings import (
     TestAutotradeSettingsSchema,
 )
 from pybinbot.models.bot_base import BotBase, RecoveryParams
+from pybinbot.models.symbol import AssetIndexModel, SymbolModel
 from pybinbot.models.bot import (
     AlgoRankingItem,
     BotDataErrorResponse,
@@ -38,6 +39,7 @@ __all__ = [
     "AutotradeSettingsResponse",
     "AutotradeSettingsSchema",
     "AlgoRankingItem",
+    "AssetIndexModel",
     "BotDataErrorResponse",
     "BotBase",
     "BotListResponse",
@@ -62,5 +64,6 @@ __all__ = [
     "OrderModel",
     "RecoveryParams",
     "RecoveryBotModel",
+    "SymbolModel",
     "TestAutotradeSettingsSchema",
 ]

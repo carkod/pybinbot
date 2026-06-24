@@ -88,6 +88,10 @@ class _TestAutotradeSettingsSchema(_AutotradeSettingsSchema):
     pass
 
 
+class _BotModel(BaseModel):
+    pass
+
+
 def load_binbot_api_class():
     pybinbot_stub = types.ModuleType("pybinbot")
 
@@ -112,6 +116,9 @@ def load_binbot_api_class():
     autotrade_stub = types.ModuleType("pybinbot.models.autotrade_settings")
     autotrade_stub.AutotradeSettingsSchema = _AutotradeSettingsSchema
     autotrade_stub.TestAutotradeSettingsSchema = _TestAutotradeSettingsSchema
+
+    bot_stub = types.ModuleType("pybinbot.models.bot")
+    bot_stub.BotModel = _BotModel
 
     handlers_stub = types.ModuleType("pybinbot.shared.handlers")
     handlers_stub.handle_binbot_errors = lambda response: response
@@ -138,6 +145,7 @@ def load_binbot_api_class():
             "pybinbot": pybinbot_stub,
             "pybinbot.models": models_stub,
             "pybinbot.models.symbol": symbol_stub,
+            "pybinbot.models.bot": bot_stub,
             "pybinbot.models.grid_ladder": grid_stub,
             "pybinbot.models.autotrade_settings": autotrade_stub,
             "pybinbot.shared.handlers": handlers_stub,
@@ -216,7 +224,9 @@ class TestEditSymbol:
 
         result = api.edit_symbol("BTCUSDTM", ExchangeId.KUCOIN, futures_leverage=2)
 
-        assert result == {"id": "BTCUSDTM", "futures_leverage": 2}
+        assert result.id == "BTCUSDTM"
+        assert result.futures_leverage == 2
+        assert result.exchange_id == "kucoin"
         assert captured["url"] == "https://example.com/symbol"
         assert captured["method"] == "PUT"
         assert captured["json"] == {
@@ -268,7 +278,8 @@ class TestEditSymbol:
 
         result = api.edit_symbol("BTCUSDTM", ExchangeId.KUCOIN)
 
-        assert result == {"symbol": "BTCUSDTM", "exchange_id": "kucoin"}
+        assert result.id == "BTCUSDTM"
+        assert result.exchange_id == "kucoin"
         assert captured["json"] == {"symbol": "BTCUSDTM", "exchange_id": "kucoin"}
 
     def test_omits_none_values_from_symbol_payload(self) -> None:
@@ -286,5 +297,6 @@ class TestEditSymbol:
 
         result = api.edit_symbol("BTCUSDTM", ExchangeId.KUCOIN, active=None)
 
-        assert result == {"symbol": "BTCUSDTM", "exchange_id": "kucoin"}
+        assert result.id == "BTCUSDTM"
+        assert result.exchange_id == "kucoin"
         assert captured["json"] == {"symbol": "BTCUSDTM", "exchange_id": "kucoin"}

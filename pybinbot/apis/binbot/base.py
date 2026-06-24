@@ -182,13 +182,24 @@ class BinbotApi:
                 data = await aio_response_handler(response)
                 return data
 
-    def get_symbols(self) -> list[dict]:
-        response = self.request(url=self.bb_symbols)
-        return response["data"]
+    @staticmethod
+    def _symbol_model(data: dict) -> SymbolModel:
+        payload = dict(data)
+        if "id" not in payload and "symbol" in payload:
+            payload["id"] = payload["symbol"]
+        return SymbolModel.model_validate(payload)
 
-    def get_single_symbol(self, symbol: str) -> dict:
+    @classmethod
+    def _symbol_models(cls, data: list[dict] | None) -> list[SymbolModel]:
+        return [cls._symbol_model(item) for item in (data or [])]
+
+    def get_symbols(self) -> list[SymbolModel]:
+        response = self.request(url=self.bb_symbols)
+        return self._symbol_models(response["data"])
+
+    def get_single_symbol(self, symbol: str) -> SymbolModel:
         response = self.request(url=f"{self.bb_one_symbol_url}/{symbol}")
-        return response["data"]
+        return self._symbol_model(response["data"])
 
     @staticmethod
     def _bot_model(data: dict | None) -> BotModel | None:
@@ -224,7 +235,7 @@ class BinbotApi:
         price_precision: int | None = None,
         qty_precision: int | None = None,
         min_notional: float | None = None,
-    ) -> dict:
+    ) -> SymbolModel:
         """
         PUT /symbol — update a symbol row.
 
@@ -255,7 +266,8 @@ class BinbotApi:
             method="PUT",
             json=payload,
         )
-        return response["data"]
+        response_data = {**payload, **response["data"]}
+        return self._symbol_model(response_data)
 
     def get_bot_by_symbol(self, symbol: str) -> BotModel | None:
         response = self.request(url=f"{self.bb_bot_url}/symbol/{symbol}")
@@ -549,10 +561,10 @@ class BinbotApi:
 
         for s in all_symbols:
             for ap in active_pairs:
-                if (
-                    ap.startswith(s["base_asset"]) and s["id"] not in exclusion_list
-                ) or (not s["active"]):
-                    exclusion_list.append(s["id"])
+                if (ap.startswith(s.base_asset) and s.id not in exclusion_list) or (
+                    not s.active
+                ):
+                    exclusion_list.append(s.id)
 
         return exclusion_list
 
@@ -638,11 +650,11 @@ class BinbotApi:
         Get price decimals from API db
         """
         symbol_info = self.get_single_symbol(symbol)
-        return symbol_info["price_precision"]
+        return symbol_info.price_precision
 
     def qty_precision(self, symbol) -> int:
         """
         Get qty decimals from API db
         """
         symbol_info = self.get_single_symbol(symbol)
-        return symbol_info["qty_precision"]
+        return symbol_info.qty_precision
