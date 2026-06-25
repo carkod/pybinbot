@@ -80,6 +80,11 @@ class _GridLadderRecord(BaseModel):
     breakout_high: float = 115
 
 
+class _GridCalculation(BaseModel):
+    grid_step: float = 5
+    levels: list[dict] = []
+
+
 class _AutotradeSettingsSchema(BaseModel):
     fiat: str = "USDC"
 
@@ -117,6 +122,7 @@ def load_binbot_api_class():
     symbol_stub.SymbolModel = _SymbolModel
 
     grid_stub = types.ModuleType("pybinbot.models.grid_ladder")
+    grid_stub.GridCalculation = _GridCalculation
     grid_stub.GridDeploymentRequest = _GridDeploymentRequest
     grid_stub.GridLadderRecord = _GridLadderRecord
 
@@ -216,6 +222,28 @@ class TestSubmitBotEventLogs:
         assert captured["json"] == {
             "errors": ["failed to create bot", "failed to create deal"]
         }
+
+
+class TestCalculateGridLevels:
+    def test_posts_payload_to_grid_calculate_endpoint(self) -> None:
+        api_class = load_binbot_api_class()
+        api = object.__new__(api_class)
+        api.bb_grid_ladder_calculate_url = "https://example.com/grid-ladders/calculate"
+
+        captured: dict = {}
+
+        def fake_request(**kwargs):
+            captured.update(kwargs)
+            return {"detail": {"grid_step": 5, "levels": [{"level_index": 0}]}}
+
+        api.request = fake_request
+
+        result = api.calculate_grid_levels({"symbol": "BTCUSDTM"})
+
+        assert result.grid_step == 5
+        assert captured["url"] == "https://example.com/grid-ladders/calculate"
+        assert captured["method"] == "POST"
+        assert captured["json"] == {"symbol": "BTCUSDTM"}
 
 
 class TestEditSymbol:
