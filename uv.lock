@@ -1068,7 +1068,7 @@ wheels = [
 
 [[package]]
 name = "pybinbot"
-version = "1.9.46"
+version = "1.9.47"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
