@@ -139,6 +139,24 @@ class GridOrderRecord(BaseModel):
     )
 
 
+class GridLevelCalculation(BaseModel):
+    level_index: int = Field(ge=0)
+    price: float = Field(gt=0)
+    side: str
+    contracts: int = Field(ge=0)
+    margin_required: float = Field(ge=0)
+    take_profit_price: float | None = None
+
+    model_config = ConfigDict(extra="allow", from_attributes=True)
+
+
+class GridCalculation(BaseModel):
+    grid_step: float = Field(gt=0)
+    levels: list[GridLevelCalculation] = Field(default_factory=list)
+
+    model_config = ConfigDict(extra="allow", from_attributes=True)
+
+
 class GridLadderRecord(BaseModel):
     """
     Persisted grid ladder as returned by binbot's grid-ladder endpoints.
@@ -190,6 +208,12 @@ class GridLadderCloseRequest(BaseModel):
 
 class GridLadderResponse(BaseModel):
     detail: GridLadderRecord | None = None
+
+    model_config = ConfigDict(extra="allow", from_attributes=True)
+
+
+class GridCalculationResponse(BaseModel):
+    detail: GridCalculation
 
     model_config = ConfigDict(extra="allow", from_attributes=True)
 

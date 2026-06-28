@@ -2,19 +2,21 @@ import asyncio
 import logging
 from typing import Any
 from aiohttp import ClientSession
-from pybinbot import ExchangeId, Status
 from requests import Session
 from pybinbot import (
-    handle_binbot_errors,
-    aio_response_handler,
-    BinanceApi,
     AssetIndexModel,
-    SymbolModel,
     AutotradeSettingsSchema,
-    TestAutotradeSettingsSchema,
+    BinanceApi,
     BotModel,
+    ExchangeId,
+    GridCalculation,
     GridDeploymentRequest,
     GridLadderRecord,
+    Status,
+    SymbolModel,
+    TestAutotradeSettingsSchema,
+    aio_response_handler,
+    handle_binbot_errors,
 )
 from datetime import datetime, timezone
 from dateutil.parser import parse
@@ -67,6 +69,7 @@ class BinbotApi:
         self.bb_market_breadth_url = f"{bb_base_url}/charts/market-breadth"
         self.bb_signals_url = f"{bb_base_url}/signals"
         self.bb_grid_ladders_url = f"{bb_base_url}/grid-ladders"
+        self.bb_grid_ladder_calculate_url = f"{bb_base_url}/grid-ladders/calculate"
         self.bb_active_grid_ladders_url = f"{bb_base_url}/grid-ladders/active"
 
         # Trade operations
@@ -460,6 +463,12 @@ class BinbotApi:
         response = self.request(url=self.bb_grid_ladders_url, method="POST", json=data)
         grid_ladder = GridLadderRecord.model_validate(response["detail"])
         return grid_ladder
+
+    def calculate_grid_levels(self, data: dict) -> GridCalculation:
+        response = self.request(
+            url=self.bb_grid_ladder_calculate_url, method="POST", json=data
+        )
+        return GridCalculation.model_validate(response["detail"])
 
     def get_grid_ladders(self) -> list[GridLadderRecord]:
         response = self.request(url=self.bb_grid_ladders_url)
