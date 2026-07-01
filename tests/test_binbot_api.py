@@ -11,11 +11,6 @@ from pydantic import BaseModel, ConfigDict, Field, create_model
 from pybinbot.shared.enums import ExchangeId
 
 
-class _AssetIndexModel(BaseModel):
-    id: str
-    name: str = ""
-
-
 class _SymbolModel(BaseModel):
     id: str
     created_at: int = 0
@@ -28,7 +23,6 @@ class _SymbolModel(BaseModel):
     cooldown: int = 0
     cooldown_start_ts: int = 0
     futures_leverage: int = Field(default=1, ge=1, le=3)
-    asset_indices: list[_AssetIndexModel] = []
     exchange_id: ExchangeId
     is_margin_trading_allowed: bool = False
     price_precision: int = 0
@@ -108,7 +102,6 @@ def load_binbot_api_class():
 
     pybinbot_stub.ExchangeId = ExchangeId
     pybinbot_stub.Status = Status
-    pybinbot_stub.AssetIndexModel = _AssetIndexModel
     pybinbot_stub.SymbolModel = _SymbolModel
     pybinbot_stub.AutotradeSettingsSchema = _AutotradeSettingsSchema
     pybinbot_stub.TestAutotradeSettingsSchema = _TestAutotradeSettingsSchema
@@ -119,7 +112,6 @@ def load_binbot_api_class():
 
     models_stub = types.ModuleType("pybinbot.models")
     symbol_stub = types.ModuleType("pybinbot.models.symbol")
-    symbol_stub.AssetIndexModel = _AssetIndexModel
     symbol_stub.SymbolModel = _SymbolModel
 
     grid_stub = types.ModuleType("pybinbot.models.grid_ladder")
