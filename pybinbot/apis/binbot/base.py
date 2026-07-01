@@ -8,7 +8,7 @@ from pybinbot.shared.handlers import handle_binbot_errors, aio_response_handler
 from pybinbot.apis.binance.base import BinanceApi
 from datetime import datetime, timezone
 from dateutil.parser import parse
-from pybinbot.models.symbol import AssetIndexModel, SymbolModel
+from pybinbot.models.symbol import SymbolModel
 from pybinbot.models.autotrade_settings import (
     AutotradeSettingsSchema,
     TestAutotradeSettingsSchema,
@@ -204,7 +204,6 @@ class BinbotApi:
         cooldown: int | None = None,
         cooldown_start_ts: int | None = None,
         futures_leverage: int | None = None,
-        asset_indices: list[AssetIndexModel] | None = None,
         is_margin_trading_allowed: bool | None = None,
         price_precision: int | None = None,
         qty_precision: int | None = None,
@@ -227,7 +226,6 @@ class BinbotApi:
             cooldown=cooldown,
             cooldown_start_ts=cooldown_start_ts,
             futures_leverage=futures_leverage,
-            asset_indices=asset_indices,
             exchange_id=exchange_id,
             is_margin_trading_allowed=is_margin_trading_allowed,
             price_precision=price_precision,
@@ -250,7 +248,9 @@ class BinbotApi:
         """
         Get market breadth data
         """
-        response = await self.fetch(url=self.bb_market_breadth_url, params={"size": size})
+        response = await self.fetch(
+            url=self.bb_market_breadth_url, params={"size": size}
+        )
         if "data" in response:
             return response["data"]
         return None
