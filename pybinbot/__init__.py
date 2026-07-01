@@ -101,7 +101,7 @@ from pybinbot.models.signals import (
     KlineProduceModel,
     KlineSchema,
 )
-from pybinbot.models.symbol import SymbolModel, AssetIndexModel
+from pybinbot.models.symbol import SymbolModel
 from pybinbot.models.routes import StandardResponse
 from pybinbot.apis.binance.base import BinanceApi
 from pybinbot.apis.binbot.base import BinbotApi
@@ -162,7 +162,6 @@ __all__ = [
     "ErrorsRequestBody",
     "GetBotParams",
     "SymbolModel",
-    "AssetIndexModel",
     "StandardResponse",
     "AutotradeSettings",
     "AutotradeSettingsResponse",
