@@ -11,6 +11,8 @@ DEFAULT_QUIET_LOGGERS = (
     "telegram",
     "telegram.ext",
     "uvicorn",
+    "uvicorn.error",
+    "uvicorn.access",
 )
 
 
