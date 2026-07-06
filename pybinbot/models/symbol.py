@@ -5,11 +5,6 @@ from pydantic import ConfigDict, Field, BaseModel, create_model
 from time import time
 
 
-class AssetIndexModel(BaseModel):
-    id: str = Field(description="Unique ID")
-    name: str = Field(default="", description="Name of the index")
-
-
 class SymbolModel(BaseModel):
     """
     Pydantic model for SymbolTable.
@@ -42,9 +37,6 @@ class SymbolModel(BaseModel):
         ge=1,
         le=3,
         description="Default leverage to use for this symbol when trading futures",
-    )
-    asset_indices: list[AssetIndexModel] = Field(
-        default=[], description="list of asset indices e.g. memecoin"
     )
     exchange_id: ExchangeId = Field(
         description="Exchange name where the exchange-specific values belong to (below)"

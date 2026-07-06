@@ -4,7 +4,6 @@ from typing import Any
 from aiohttp import ClientSession
 from requests import Session
 from pybinbot import (
-    AssetIndexModel,
     AutotradeSettingsSchema,
     BinanceApi,
     BotModel,
@@ -236,7 +235,6 @@ class BinbotApi:
         cooldown: int | None = None,
         cooldown_start_ts: int | None = None,
         futures_leverage: int | None = None,
-        asset_indices: list[AssetIndexModel] | None = None,
         is_margin_trading_allowed: bool | None = None,
         price_precision: int | None = None,
         qty_precision: int | None = None,
@@ -259,7 +257,6 @@ class BinbotApi:
             cooldown=cooldown,
             cooldown_start_ts=cooldown_start_ts,
             futures_leverage=futures_leverage,
-            asset_indices=asset_indices,
             exchange_id=exchange_id,
             is_margin_trading_allowed=is_margin_trading_allowed,
             price_precision=price_precision,
