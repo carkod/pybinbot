@@ -6,8 +6,11 @@ from requests import Session
 from pybinbot import (
     AutotradeSettingsSchema,
     BinanceApi,
+    BotResponse,
     BotModel,
+    BulkDeleteRequest,
     ExchangeId,
+    ErrorsRequestBody,
     GridCalculation,
     GridDeploymentRequest,
     GridLadderRecord,
@@ -441,20 +444,24 @@ class BinbotApi:
         )
         return self._bot_models(data["data"])
 
-    def submit_bot_event_logs(self, bot_id: str, message: str | list[str]) -> dict:
+    def submit_bot_event_logs(
+        self, bot_id: str, message: str | list[str]
+    ) -> BotResponse:
         """
         Submit errors or logs to bot.logs field for debugging and monitoring purposes
 
         it accepts both string or list (this is supported on Binbot's end)
         """
 
-        errors = message if isinstance(message, str) else list(message)
+        payload = ErrorsRequestBody(
+            errors=message if isinstance(message, str) else list(message)
+        ).model_dump(mode="json")
         data = self.request(
             url=f"{self.bb_submit_errors}/{bot_id}",
             method="POST",
-            json={"errors": errors},
+            json=payload,
         )
-        return data
+        return BotResponse.model_validate(data)
 
     def create_grid_ladder(self, data: dict) -> GridLadderRecord:
         response = self.request(url=self.bb_grid_ladders_url, method="POST", json=data)
@@ -492,51 +499,53 @@ class BinbotApi:
         )
         return GridLadderRecord.model_validate(response["detail"])
 
-    def create_bot(self, data: dict) -> dict[Any, Any]:
+    def create_bot(self, data: dict) -> BotResponse:
         response = self.request(url=self.bb_bot_url, method="POST", json=data)
-        return response
+        return BotResponse.model_validate(response)
 
-    def activate_bot(self, bot_id: str) -> dict[Any, Any]:
+    def activate_bot(self, bot_id: str) -> BotResponse:
         response = self.request(url=f"{self.bb_activate_bot_url}/{bot_id}")
-        return response
+        return BotResponse.model_validate(response)
 
     def deactivate_bot(
         self, bot_id: str, algorithmic_close: bool = False
-    ) -> dict[Any, Any]:
+    ) -> BotResponse:
         response = self.request(
             method="DELETE",
             url=f"{self.bb_deactivate_bot_url}/{bot_id}",
             params={"algorithmic_close": algorithmic_close},
         )
-        return response
+        return BotResponse.model_validate(response)
 
-    def delete_bot(self, bot_id: str | list[str]):
-        bot_ids = []
-        if isinstance(bot_id, str):
-            bot_ids.append(bot_id)
+    def delete_bot(self, bot_id: str | list[str]) -> BotResponse:
+        bot_ids = [bot_id] if isinstance(bot_id, str) else bot_id
+        payload = BulkDeleteRequest(ids=bot_ids).model_dump(mode="json")
 
         data = self.request(
-            url=f"{self.bb_bot_url}", method="DELETE", params={"id": bot_ids}
+            url=self.bb_bot_url,
+            method="DELETE",
+            json=payload,
         )
-        return data
+        return BotResponse.model_validate(data)
 
-    def create_paper_bot(self, data: dict) -> dict[Any, Any]:
+    def create_paper_bot(self, data: dict) -> BotResponse:
         response = self.request(url=self.bb_test_bot_url, method="POST", json=data)
-        return response
+        return BotResponse.model_validate(response)
 
-    def activate_paper_bot(self, bot_id: str) -> dict[Any, Any]:
+    def activate_paper_bot(self, bot_id: str) -> BotResponse:
         response = self.request(url=f"{self.bb_activate_test_bot_url}/{bot_id}")
-        return response
+        return BotResponse.model_validate(response)
 
-    def delete_paper_bot(self, bot_id: str | list[str]) -> dict[Any, Any]:
-        bot_ids = []
-        if isinstance(bot_id, str):
-            bot_ids.append(bot_id)
+    def delete_paper_bot(self, bot_id: str | list[str]) -> BotResponse:
+        bot_ids = [bot_id] if isinstance(bot_id, str) else bot_id
+        payload = BulkDeleteRequest(ids=bot_ids).model_dump(mode="json")
 
         response = self.request(
-            url=f"{self.bb_test_bot_url}", method="DELETE", data={"id": bot_ids}
+            url=self.bb_test_bot_url,
+            method="DELETE",
+            json=payload,
         )
-        return response
+        return BotResponse.model_validate(response)
 
     def get_active_pairs(self, collection_name="bots") -> list[str]:
         """
@@ -577,13 +586,18 @@ class BinbotApi:
 
         return exclusion_list
 
-    def submit_paper_trading_event_logs(self, bot_id: str, message: str) -> dict:
+    def submit_paper_trading_event_logs(
+        self, bot_id: str, message: str | list[str]
+    ) -> BotResponse:
+        payload = ErrorsRequestBody(
+            errors=message if isinstance(message, str) else list(message)
+        ).model_dump(mode="json")
         data = self.request(
             url=f"{self.bb_pt_submit_errors_url}/{bot_id}",
             method="POST",
-            json={"errors": message},
+            json=payload,
         )
-        return data
+        return BotResponse.model_validate(data)
 
     def add_to_blacklist(self, symbol: str, reason: str | None = None) -> dict:
         payload = {"symbol": symbol, "reason": reason}
