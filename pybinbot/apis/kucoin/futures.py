@@ -50,6 +50,8 @@ from kucoin_universal_sdk.generate.futures.positions import (
 )
 from kucoin_universal_sdk.generate.futures.order import (
     CancelAllOrdersV3ReqBuilder,
+    CancelOrderByIdReqBuilder,
+    CancelOrderByIdResp,
 )
 from kucoin_universal_sdk.model.common import RestError
 from kucoin_universal_sdk.generate.account.account import (
@@ -530,6 +532,11 @@ class KucoinFutures(KucoinRest):
         # be raised via the transport layer.
         response = self.futures_order_api.cancel_all_orders_v3(request)
         return response.cancelled_order_ids
+
+    def cancel_futures_order(self, order_id: str) -> CancelOrderByIdResp:
+        """Cancel a standard futures order by exchange order id."""
+        request = CancelOrderByIdReqBuilder().set_order_id(order_id).build()
+        return self.futures_order_api.cancel_order_by_id(request)
 
     def retrieve_order(self, order_id: str) -> GetOrderByOrderIdResp:
         """

@@ -91,6 +91,20 @@ class _BotModel(BaseModel):
     pass
 
 
+class _BotResponse(BaseModel):
+    message: str
+    error: int = 0
+    data: _BotModel | str | None = None
+
+
+class _ErrorsRequestBody(BaseModel):
+    errors: str | list[str]
+
+
+class _BulkDeleteRequest(BaseModel):
+    ids: list[str]
+
+
 def load_binbot_api_class():
     pybinbot_stub = types.ModuleType("pybinbot")
 
@@ -106,6 +120,9 @@ def load_binbot_api_class():
     pybinbot_stub.AutotradeSettingsSchema = _AutotradeSettingsSchema
     pybinbot_stub.TestAutotradeSettingsSchema = _TestAutotradeSettingsSchema
     pybinbot_stub.BotModel = _BotModel
+    pybinbot_stub.BotResponse = _BotResponse
+    pybinbot_stub.ErrorsRequestBody = _ErrorsRequestBody
+    pybinbot_stub.BulkDeleteRequest = _BulkDeleteRequest
     pybinbot_stub.GridCalculation = _GridCalculation
     pybinbot_stub.GridDeploymentRequest = _GridDeploymentRequest
     pybinbot_stub.GridLadderRecord = _GridLadderRecord
@@ -125,6 +142,9 @@ def load_binbot_api_class():
 
     bot_stub = types.ModuleType("pybinbot.models.bot")
     bot_stub.BotModel = _BotModel
+    bot_stub.BotResponse = _BotResponse
+    bot_stub.ErrorsRequestBody = _ErrorsRequestBody
+    bot_stub.BulkDeleteRequest = _BulkDeleteRequest
 
     handlers_stub = types.ModuleType("pybinbot.shared.handlers")
     handlers_stub.handle_binbot_errors = lambda response: response
@@ -180,13 +200,14 @@ class TestSubmitBotEventLogs:
 
         def fake_request(**kwargs):
             captured.update(kwargs)
-            return {"ok": True}
+            return {"message": "Errors posted successfully.", "data": {"id": "bot-1"}}
 
         api.request = fake_request
 
         result = api.submit_bot_event_logs("bot-1", "failed to create bot")
 
-        assert result == {"ok": True}
+        assert isinstance(result, _BotResponse)
+        assert result.message == "Errors posted successfully."
         assert captured["url"] == "https://example.com/bot/errors/bot-1"
         assert captured["method"] == "POST"
         assert captured["json"] == {"errors": "failed to create bot"}
@@ -200,7 +221,7 @@ class TestSubmitBotEventLogs:
 
         def fake_request(**kwargs):
             captured.update(kwargs)
-            return {"ok": True}
+            return {"message": "Errors posted successfully.", "data": {"id": "bot-1"}}
 
         api.request = fake_request
 
@@ -209,12 +230,182 @@ class TestSubmitBotEventLogs:
             ["failed to create bot", "failed to create deal"],
         )
 
-        assert result == {"ok": True}
+        assert isinstance(result, _BotResponse)
+        assert result.message == "Errors posted successfully."
         assert captured["url"] == "https://example.com/bot/errors/bot-1"
         assert captured["method"] == "POST"
         assert captured["json"] == {
             "errors": ["failed to create bot", "failed to create deal"]
         }
+
+
+class TestBotRouteResponses:
+    def test_create_bot_validates_bot_response(self) -> None:
+        api_class = load_binbot_api_class()
+        api = object.__new__(api_class)
+        api.bb_bot_url = "https://example.com/bot"
+
+        captured: dict = {}
+
+        def fake_request(**kwargs):
+            captured.update(kwargs)
+            return {"message": "Successfully created one bot.", "data": {"id": "bot-1"}}
+
+        api.request = fake_request
+
+        result = api.create_bot({"pair": "BTCUSDTM"})
+
+        assert isinstance(result, _BotResponse)
+        assert result.message == "Successfully created one bot."
+        assert captured["url"] == "https://example.com/bot"
+        assert captured["method"] == "POST"
+        assert captured["json"] == {"pair": "BTCUSDTM"}
+
+    def test_activate_bot_validates_bot_response(self) -> None:
+        api_class = load_binbot_api_class()
+        api = object.__new__(api_class)
+        api.bb_activate_bot_url = "https://example.com/bot/activate"
+        api.request = lambda **kwargs: {
+            "message": "Successfully activated bot.",
+            "data": {"id": "bot-1"},
+        }
+
+        result = api.activate_bot("bot-1")
+
+        assert isinstance(result, _BotResponse)
+        assert result.message == "Successfully activated bot."
+
+    def test_deactivate_bot_validates_bot_response(self) -> None:
+        api_class = load_binbot_api_class()
+        api = object.__new__(api_class)
+        api.bb_deactivate_bot_url = "https://example.com/bot/deactivate"
+
+        captured: dict = {}
+
+        def fake_request(**kwargs):
+            captured.update(kwargs)
+            return {
+                "message": "Successfully triggered panic sell! Bot deactivated.",
+                "data": {"id": "bot-1"},
+            }
+
+        api.request = fake_request
+
+        result = api.deactivate_bot("bot-1", algorithmic_close=True)
+
+        assert isinstance(result, _BotResponse)
+        assert result.message == "Successfully triggered panic sell! Bot deactivated."
+        assert captured["url"] == "https://example.com/bot/deactivate/bot-1"
+        assert captured["method"] == "DELETE"
+        assert captured["params"] == {"algorithmic_close": True}
+
+    def test_delete_bot_sends_bulk_delete_json_and_validates_response(self) -> None:
+        api_class = load_binbot_api_class()
+        api = object.__new__(api_class)
+        api.bb_bot_url = "https://example.com/bot"
+
+        captured: dict = {}
+
+        def fake_request(**kwargs):
+            captured.update(kwargs)
+            return {"message": "Successfully deleted bots."}
+
+        api.request = fake_request
+
+        result = api.delete_bot(["bot-1", "bot-2"])
+
+        assert isinstance(result, _BotResponse)
+        assert result.message == "Successfully deleted bots."
+        assert captured["url"] == "https://example.com/bot"
+        assert captured["method"] == "DELETE"
+        assert captured["json"] == {"ids": ["bot-1", "bot-2"]}
+
+    def test_create_paper_bot_validates_bot_response(self) -> None:
+        api_class = load_binbot_api_class()
+        api = object.__new__(api_class)
+        api.bb_test_bot_url = "https://example.com/paper-trading"
+
+        captured: dict = {}
+
+        def fake_request(**kwargs):
+            captured.update(kwargs)
+            return {"message": "Bot created", "data": {"id": "paper-bot-1"}}
+
+        api.request = fake_request
+
+        result = api.create_paper_bot({"pair": "BTCUSDTM"})
+
+        assert isinstance(result, _BotResponse)
+        assert result.message == "Bot created"
+        assert captured["url"] == "https://example.com/paper-trading"
+        assert captured["method"] == "POST"
+        assert captured["json"] == {"pair": "BTCUSDTM"}
+
+    def test_activate_paper_bot_validates_bot_response(self) -> None:
+        api_class = load_binbot_api_class()
+        api = object.__new__(api_class)
+        api.bb_activate_test_bot_url = "https://example.com/paper-trading/activate"
+        api.request = lambda **kwargs: {
+            "message": "Successfully activated bot!",
+            "data": {"id": "paper-bot-1"},
+        }
+
+        result = api.activate_paper_bot("paper-bot-1")
+
+        assert isinstance(result, _BotResponse)
+        assert result.message == "Successfully activated bot!"
+
+    def test_delete_paper_bot_sends_bulk_delete_json_and_validates_response(
+        self,
+    ) -> None:
+        api_class = load_binbot_api_class()
+        api = object.__new__(api_class)
+        api.bb_test_bot_url = "https://example.com/paper-trading"
+
+        captured: dict = {}
+
+        def fake_request(**kwargs):
+            captured.update(kwargs)
+            return {"message": "Successfully deleted bot!"}
+
+        api.request = fake_request
+
+        result = api.delete_paper_bot("paper-bot-1")
+
+        assert isinstance(result, _BotResponse)
+        assert result.message == "Successfully deleted bot!"
+        assert captured["url"] == "https://example.com/paper-trading"
+        assert captured["method"] == "DELETE"
+        assert captured["json"] == {"ids": ["paper-bot-1"]}
+
+    def test_submit_paper_trading_event_logs_validates_response(self) -> None:
+        api_class = load_binbot_api_class()
+        api = object.__new__(api_class)
+        api.bb_pt_submit_errors_url = "https://example.com/paper-trading/errors"
+
+        captured: dict = {}
+
+        def fake_request(**kwargs):
+            captured.update(kwargs)
+            return {
+                "message": "Errors posted successfully.",
+                "data": {"id": "paper-bot-1"},
+            }
+
+        api.request = fake_request
+
+        result = api.submit_paper_trading_event_logs(
+            "paper-bot-1",
+            ["waiting for fill"],
+        )
+
+        assert isinstance(result, _BotResponse)
+        assert result.message == "Errors posted successfully."
+        assert captured["url"] == (
+            "https://example.com/paper-trading/errors/paper-bot-1"
+        )
+        assert captured["method"] == "POST"
+        assert captured["json"] == {"errors": ["waiting for fill"]}
 
 
 class TestCalculateGridLevels:
