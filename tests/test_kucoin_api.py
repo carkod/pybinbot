@@ -48,3 +48,20 @@ def test_get_mark_price_returns_float_when_value_is_available():
     )
 
     assert api.get_mark_price("BTCUSDTM") == 12.34
+
+
+def test_cancel_futures_order_uses_standard_order_cancel_by_id():
+    api = object.__new__(KucoinFutures)
+    captured = {}
+    expected = SimpleNamespace(order_id="entry-order-1")
+
+    def cancel_order_by_id(request):
+        captured["request"] = request
+        return expected
+
+    api.futures_order_api = SimpleNamespace(cancel_order_by_id=cancel_order_by_id)
+
+    result = api.cancel_futures_order("entry-order-1")
+
+    assert result is expected
+    assert captured["request"].order_id == "entry-order-1"
