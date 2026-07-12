@@ -1,5 +1,6 @@
 import enum
 import importlib.util
+import asyncio
 import sys
 import types
 from pathlib import Path
@@ -79,6 +80,24 @@ class _GridCalculation(BaseModel):
     levels: list[dict] = []
 
 
+class _MarketBreadthSeries(BaseModel):
+    timestamp: list[str]
+    advancers: list[int]
+    decliners: list[int]
+    market_breadth: list[float]
+    market_breadth_ma: list[float | None]
+    avg_gain: list[float]
+    avg_loss: list[float]
+    total_volume: list[float]
+    strength_index: list[float]
+
+
+class _MarketBreadthSeriesResponse(BaseModel):
+    message: str
+    error: int = 0
+    data: _MarketBreadthSeries
+
+
 class _AutotradeSettingsSchema(BaseModel):
     fiat: str = "USDC"
 
@@ -126,6 +145,8 @@ def load_binbot_api_class():
     pybinbot_stub.GridCalculation = _GridCalculation
     pybinbot_stub.GridDeploymentRequest = _GridDeploymentRequest
     pybinbot_stub.GridLadderRecord = _GridLadderRecord
+    pybinbot_stub.MarketBreadthSeries = _MarketBreadthSeries
+    pybinbot_stub.MarketBreadthSeriesResponse = _MarketBreadthSeriesResponse
 
     models_stub = types.ModuleType("pybinbot.models")
     symbol_stub = types.ModuleType("pybinbot.models.symbol")
@@ -237,6 +258,41 @@ class TestSubmitBotEventLogs:
         assert captured["json"] == {
             "errors": ["failed to create bot", "failed to create deal"]
         }
+
+
+class TestMarketBreadth:
+    def test_get_market_breadth_validates_and_returns_series_model(self) -> None:
+        api_class = load_binbot_api_class()
+        api = object.__new__(api_class)
+        api.bb_market_breadth_url = "https://example.com/charts/market-breadth"
+
+        async def fake_fetch(**kwargs):
+            assert kwargs == {
+                "url": api.bb_market_breadth_url,
+                "params": {"size": 2},
+            }
+            return {
+                "message": "Successfully retrieved market breadth data.",
+                "error": 0,
+                "data": {
+                    "timestamp": ["2026-07-12T12:15:00Z", "2026-07-12T12:00:00Z"],
+                    "advancers": [60, 55],
+                    "decliners": [40, 45],
+                    "market_breadth": [0.2, 0.1],
+                    "market_breadth_ma": [0.15, 0.1],
+                    "avg_gain": [0.03, 0.02],
+                    "avg_loss": [-0.02, -0.02],
+                    "total_volume": [1200.0, 1100.0],
+                    "strength_index": [0.7, 0.6],
+                },
+            }
+
+        api.fetch = fake_fetch
+
+        result = asyncio.run(api.get_market_breadth(size=2))
+
+        assert isinstance(result, _MarketBreadthSeries)
+        assert result.market_breadth_ma == [0.15, 0.1]
 
 
 class TestBotRouteResponses:

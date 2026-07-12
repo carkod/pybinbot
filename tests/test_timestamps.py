@@ -1,11 +1,33 @@
-from pybinbot.shared import timestamps
 from datetime import datetime
+from math import inf, nan
+
+import pytest
+
+from pybinbot import timestamp_sort_key
+from pybinbot.shared import timestamps
 
 
 def test_timestamp():
     ts = timestamps.timestamp()
     assert isinstance(ts, int)
     assert len(str(ts)) == 13
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (1_700_000_000_000, 1_700_000_000_000.0),
+        (1_700_000_000.5, 1_700_000_000.5),
+        ("2026-07-04T00:15:00+00:00", 1_783_124_100.0),
+        ("2026-07-04T00:15:00Z", 1_783_124_100.0),
+        ("not-a-timestamp", None),
+        (None, None),
+        (inf, None),
+        (nan, None),
+    ],
+)
+def test_timestamp_sort_key(value, expected):
+    assert timestamp_sort_key(value) == expected
 
 
 def test_round_timestamp():

@@ -1,12 +1,26 @@
-import os
-from time import time
 import math
-from zoneinfo import ZoneInfo
+import os
 from datetime import datetime
+from time import time
+from typing import Any
+from zoneinfo import ZoneInfo
 
 from .maths import round_numbers_ceiling
 
 format = "%Y-%m-%d %H:%M:%S"
+
+
+def timestamp_sort_key(value: Any) -> float | None:
+    """Return a sortable timestamp value for finite numbers or ISO strings."""
+    if isinstance(value, (int, float)):
+        parsed = float(value)
+        return parsed if math.isfinite(parsed) else None
+    if not isinstance(value, str):
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
 
 
 def timestamp() -> int:
