@@ -1,4 +1,7 @@
-from typing import cast
+from collections.abc import Mapping, Sequence
+from math import isfinite
+from time import time
+from typing import Any, cast
 
 from pandas import DataFrame, to_numeric, Timedelta
 from pandas.api.types import is_numeric_dtype
@@ -86,6 +89,78 @@ class Candles:
                     df[col] = df[col] / 1000
 
         return df
+
+    @staticmethod
+    def partition_closed_candles(
+        candles: list[Any],
+        now_ms: int | None = None,
+        interval_ms: int | None = None,
+    ) -> tuple[list[Any], Any | None]:
+        """Partition candle rows into completed rows and the current row.
+
+        Sequence rows use ``[0]`` and ``[6]`` as their open and close
+        timestamps. Mapping rows use ``open_time`` and ``close_time``. Pass an
+        interval when the source does not provide a real close timestamp; the
+        close boundary is then derived from ``open_time + interval_ms - 1``.
+        Second timestamps are normalized to milliseconds.
+        """
+        if interval_ms is not None and interval_ms <= 0:
+            raise ValueError("interval_ms must be positive")
+
+        current_time_ms = now_ms if now_ms is not None else int(time() * 1000)
+        normalized_candles: list[tuple[float, float, Any]] = []
+
+        for candle in candles:
+            if isinstance(candle, Mapping):
+                open_time_value = candle.get("open_time")
+                close_time_value = candle.get("close_time")
+            elif isinstance(candle, Sequence) and not isinstance(candle, str):
+                if len(candle) < 7:
+                    continue
+                open_time_value = candle[0]
+                close_time_value = candle[6]
+            else:
+                continue
+
+            if open_time_value is None:
+                continue
+            try:
+                open_time = float(open_time_value)
+            except (TypeError, ValueError):
+                continue
+            if not isfinite(open_time):
+                continue
+            if open_time < 100_000_000_000:
+                open_time *= 1000
+
+            if interval_ms is not None:
+                close_time = open_time + interval_ms - 1
+            else:
+                if close_time_value is None:
+                    continue
+                try:
+                    close_time = float(close_time_value)
+                except (TypeError, ValueError):
+                    continue
+                if not isfinite(close_time):
+                    continue
+                if close_time < 100_000_000_000:
+                    close_time *= 1000
+
+            normalized_candles.append((open_time, close_time, candle))
+
+        completed: list[Any] = []
+        current: Any | None = None
+        for open_time, close_time, candle in sorted(
+            normalized_candles,
+            key=lambda item: item[0],
+        ):
+            if close_time < current_time_ms:
+                completed.append(candle)
+            elif open_time <= current_time_ms <= close_time:
+                current = candle
+
+        return completed, current
 
     # ------------------------------------------------------------------
     # Private DataFrame-building helpers

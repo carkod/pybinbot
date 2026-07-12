@@ -14,6 +14,8 @@ from pybinbot import (
     GridCalculation,
     GridDeploymentRequest,
     GridLadderRecord,
+    MarketBreadthSeries,
+    MarketBreadthSeriesResponse,
     Status,
     SymbolModel,
     TestAutotradeSettingsSchema,
@@ -279,16 +281,16 @@ class BinbotApi:
         response = self.request(url=f"{self.bb_bot_url}/symbol/{symbol}")
         return self._bot_model(response["data"])
 
-    async def get_market_breadth(self, size=400):
+    async def get_market_breadth(self, size: int = 400) -> MarketBreadthSeries | None:
         """
         Get market breadth data
         """
         response = await self.fetch(
             url=self.bb_market_breadth_url, params={"size": size}
         )
-        if "data" in response:
-            return response["data"]
-        return None
+        if response.get("data") is None:
+            return None
+        return MarketBreadthSeriesResponse.model_validate(response).data
 
     async def create_signal(
         self,

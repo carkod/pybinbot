@@ -1,5 +1,6 @@
 import enum
 import importlib.util
+import asyncio
 import sys
 import types
 from pathlib import Path
@@ -8,6 +9,7 @@ from unittest.mock import patch
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
+from pybinbot.models.bot import BotModel, BotResponse as ProductionBotResponse
 from pybinbot.shared.enums import ExchangeId
 
 
@@ -79,6 +81,24 @@ class _GridCalculation(BaseModel):
     levels: list[dict] = []
 
 
+class _MarketBreadthSeries(BaseModel):
+    timestamp: list[str]
+    advancers: list[int]
+    decliners: list[int]
+    market_breadth: list[float]
+    market_breadth_ma: list[float | None]
+    avg_gain: list[float]
+    avg_loss: list[float]
+    total_volume: list[float]
+    strength_index: list[float]
+
+
+class _MarketBreadthSeriesResponse(BaseModel):
+    message: str
+    error: int = 0
+    data: _MarketBreadthSeries
+
+
 class _AutotradeSettingsSchema(BaseModel):
     fiat: str = "USDC"
 
@@ -88,13 +108,13 @@ class _TestAutotradeSettingsSchema(_AutotradeSettingsSchema):
 
 
 class _BotModel(BaseModel):
-    pass
+    pair: str
 
 
 class _BotResponse(BaseModel):
     message: str
     error: int = 0
-    data: _BotModel | str | None = None
+    data: _BotModel | dict | str | None = None
 
 
 class _ErrorsRequestBody(BaseModel):
@@ -126,6 +146,8 @@ def load_binbot_api_class():
     pybinbot_stub.GridCalculation = _GridCalculation
     pybinbot_stub.GridDeploymentRequest = _GridDeploymentRequest
     pybinbot_stub.GridLadderRecord = _GridLadderRecord
+    pybinbot_stub.MarketBreadthSeries = _MarketBreadthSeries
+    pybinbot_stub.MarketBreadthSeriesResponse = _MarketBreadthSeriesResponse
 
     models_stub = types.ModuleType("pybinbot.models")
     symbol_stub = types.ModuleType("pybinbot.models.symbol")
@@ -239,7 +261,77 @@ class TestSubmitBotEventLogs:
         }
 
 
+class TestMarketBreadth:
+    def test_get_market_breadth_validates_and_returns_series_model(self) -> None:
+        api_class = load_binbot_api_class()
+        api = object.__new__(api_class)
+        api.bb_market_breadth_url = "https://example.com/charts/market-breadth"
+
+        async def fake_fetch(**kwargs):
+            assert kwargs == {
+                "url": api.bb_market_breadth_url,
+                "params": {"size": 2},
+            }
+            return {
+                "message": "Successfully retrieved market breadth data.",
+                "error": 0,
+                "data": {
+                    "timestamp": ["2026-07-12T12:15:00Z", "2026-07-12T12:00:00Z"],
+                    "advancers": [60, 55],
+                    "decliners": [40, 45],
+                    "market_breadth": [0.2, 0.1],
+                    "market_breadth_ma": [0.15, 0.1],
+                    "avg_gain": [0.03, 0.02],
+                    "avg_loss": [-0.02, -0.02],
+                    "total_volume": [1200.0, 1100.0],
+                    "strength_index": [0.7, 0.6],
+                },
+            }
+
+        api.fetch = fake_fetch
+
+        result = asyncio.run(api.get_market_breadth(size=2))
+
+        assert isinstance(result, _MarketBreadthSeries)
+        assert result.market_breadth_ma == [0.15, 0.1]
+
+    def test_get_market_breadth_returns_none_for_null_data(self) -> None:
+        api_class = load_binbot_api_class()
+        api = object.__new__(api_class)
+        api.bb_market_breadth_url = "https://example.com/charts/market-breadth"
+
+        async def fake_fetch(**kwargs):
+            return {
+                "message": "No market breadth data found.",
+                "error": 0,
+                "data": None,
+            }
+
+        api.fetch = fake_fetch
+
+        assert asyncio.run(api.get_market_breadth()) is None
+
+
 class TestBotRouteResponses:
+    def test_production_bot_response_accepts_partial_bot_data(self) -> None:
+        response = ProductionBotResponse.model_validate(
+            {
+                "message": "Successfully updated bot.",
+                "data": {"id": "550e8400-e29b-41d4-a716-446655440000"},
+            }
+        )
+
+        assert response.data == {"id": "550e8400-e29b-41d4-a716-446655440000"}
+
+    def test_production_bot_response_keeps_complete_bot_data_typed(self) -> None:
+        bot = BotModel(pair="BTCUSDTM")
+
+        response = ProductionBotResponse.model_validate(
+            {"message": "Successfully retrieved bot.", "data": bot.model_dump()}
+        )
+
+        assert isinstance(response.data, BotModel)
+
     def test_create_bot_validates_bot_response(self) -> None:
         api_class = load_binbot_api_class()
         api = object.__new__(api_class)

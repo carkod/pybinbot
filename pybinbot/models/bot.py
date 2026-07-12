@@ -169,7 +169,10 @@ class BotDataErrorResponse(BotBase):
 class BotResponse(BaseModel):
     message: str
     error: int = Field(default=0)
-    data: BotModel | str | None = Field(default=None)
+    data: BotModel | dict[str, Any] | str | None = Field(
+        default=None,
+        union_mode="left_to_right",
+    )
 
 
 class BotPairsList(BaseModel):
