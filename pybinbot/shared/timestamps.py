@@ -1,12 +1,31 @@
-import os
-from time import time
 import math
-from zoneinfo import ZoneInfo
+import os
 from datetime import datetime
+from time import time
+from typing import Any
+from zoneinfo import ZoneInfo
 
 from .maths import round_numbers_ceiling
 
 format = "%Y-%m-%d %H:%M:%S"
+EPOCH_MILLISECONDS_THRESHOLD = 100_000_000_000
+
+
+def timestamp_sort_key(value: Any) -> float | None:
+    """Return finite epoch seconds for numeric or ISO timestamps."""
+    if isinstance(value, (int, float)):
+        parsed = float(value)
+        if not math.isfinite(parsed):
+            return None
+        if abs(parsed) >= EPOCH_MILLISECONDS_THRESHOLD:
+            return parsed / 1000
+        return parsed
+    if not isinstance(value, str):
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
 
 
 def timestamp() -> int:
