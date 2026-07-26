@@ -244,6 +244,7 @@ class BinbotApi:
         price_precision: int | None = None,
         qty_precision: int | None = None,
         min_notional: float | None = None,
+        multiplier: float | None = None,
     ) -> SymbolModel:
         """
         PUT /symbol — update a symbol row.
@@ -267,6 +268,7 @@ class BinbotApi:
             price_precision=price_precision,
             qty_precision=qty_precision,
             min_notional=min_notional,
+            multiplier=multiplier,
         )
         payload["symbol"] = payload.pop("id")
         response = self.request(
