@@ -1,6 +1,21 @@
 from pybinbot.shared import maths
 
 
+def test_coerce_number():
+    assert maths.coerce_number("3.14") == 3.14
+    assert maths.coerce_number(2) == 2.0
+    assert maths.coerce_number(None) is None
+    assert maths.coerce_number("not-a-number") is None
+    assert maths.coerce_number(float("nan")) is None
+    assert maths.coerce_number(float("inf")) is None
+
+
+def test_coerce_number_is_exported_from_top_level_package():
+    from pybinbot import coerce_number
+
+    assert coerce_number("3.14") == 3.14
+
+
 def test_ensure_float():
     assert maths.ensure_float("3.14") == 3.14
     assert maths.ensure_float(2) == 2.0

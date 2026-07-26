@@ -2,7 +2,17 @@ import math
 import re
 from decimal import Decimal
 from datetime import datetime
-from typing import cast
+from typing import Any, cast
+
+
+def coerce_number(value: Any) -> float | None:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(parsed):
+        return None
+    return parsed
 
 
 def ensure_float(value: str | int | float) -> float:
