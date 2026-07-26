@@ -6,6 +6,7 @@ models, while still allowing access to the structured subpackages via
 """
 
 from pybinbot.shared.maths import (
+    coerce_number,
     format_ts,
     interval_to_millisecs,
     round_numbers,
@@ -202,6 +203,7 @@ __all__ = [
     "convert_to_kucoin_symbol",
     "convert_from_kucoin_symbol",
     # maths helpers
+    "coerce_number",
     "supress_trailing",
     "round_numbers",
     "round_numbers_ceiling",
