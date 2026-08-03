@@ -48,6 +48,12 @@ class SymbolModel(BaseModel):
     )
     qty_precision: int = Field(default=0)
     min_notional: float = Field(default=0, description="Minimum price x qty value")
+    multiplier: float = Field(
+        default=1.0,
+        description="Futures contract multiplier: quantity of the underlying "
+        "asset represented by one contract (e.g. KuCoin XBTUSDTM=0.001). "
+        "Not meaningful for spot/margin, where it stays 1.0.",
+    )
 
     _update_model: ClassVar[type[BaseModel] | None] = None
 

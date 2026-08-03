@@ -30,6 +30,7 @@ class _SymbolModel(BaseModel):
     price_precision: int = 0
     qty_precision: int = 0
     min_notional: float = 0
+    multiplier: float = 1.0
 
     @classmethod
     def to_update_payload(cls, **fields: object) -> dict:

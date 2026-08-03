@@ -23,3 +23,9 @@ def test_symbol_update_payload_validates_model_constraints() -> None:
 def test_symbol_update_payload_rejects_unknown_fields() -> None:
     with pytest.raises(ValueError, match="Extra inputs are not permitted"):
         SymbolModel.to_update_payload(symbol="BTCUSDTM")
+
+
+def test_symbol_multiplier_defaults_to_one() -> None:
+    symbol = SymbolModel(id="BTCUSDT", exchange_id="binance")
+
+    assert symbol.multiplier == 1.0
