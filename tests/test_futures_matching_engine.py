@@ -192,6 +192,44 @@ def test_place_futures_order_does_not_market_fallback_when_disabled():
     f.futures_order_api.add_order.assert_called_once()
 
 
+def test_place_futures_order_marks_zero_fill_done_order_as_canceled_not_filled():
+    """
+    KuCoin's "done" status means the order's lifecycle ended, which includes
+    cancellations, not just fills. A stop/conditional order that was accepted
+    then cancelled before triggering must not be recorded as FILLED with a
+    phantom qty=0/price=0 fill — that reads as a fake trade in the bot's
+    order history and hides whether the position is actually protected.
+    """
+    f = _make_futures()
+    f.set_futures_margin_mode = MagicMock()
+    f.futures_order_api = MagicMock()
+    f.futures_order_api.add_order.return_value = types.SimpleNamespace(
+        order_id="ord-zero-fill"
+    )
+    f.retrieve_order = lambda oid: types.SimpleNamespace(
+        status=types.SimpleNamespace(value="done"),
+        filled_size="0",
+        avg_deal_price="0",
+        created_at=1000000,
+        type=types.SimpleNamespace(value="market"),
+        time_in_force="GTC",
+        side=types.SimpleNamespace(value="sell"),
+    )
+
+    with patch("pybinbot.apis.kucoin.futures.sleep"):
+        result = f.place_futures_order(
+            symbol="FHEUSDTM",
+            side=AddOrderReq.SideEnum.SELL,
+            size=8,
+            order_type=OrderType.market,
+            leverage=2,
+            reduce_only=True,
+        )
+
+    assert result.status == OrderStatus.CANCELED
+    assert result.qty == 0
+
+
 # ---------------------------------------------------------------------------
 # matching_engine — anti-wick path (reference_price provided)
 # ---------------------------------------------------------------------------

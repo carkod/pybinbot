@@ -895,6 +895,15 @@ class KucoinFutures(KucoinRest):
             status = OrderStatus.map_from_kucoin_status(order_details.status.value)
             filled_size = float(order_details.filled_size)
             price_used = float(order_details.avg_deal_price)
+            # KuCoin's "done" status means the order's lifecycle ended, which
+            # includes cancellations — it does not guarantee a fill. Without
+            # this check, a stop/conditional order that was accepted and then
+            # cancelled (never triggered) gets recorded as FILLED with
+            # qty=0/price=0, which reads as a phantom trade in the bot's
+            # order history and masks whether the position is actually
+            # exchange-protected.
+            if status == OrderStatus.FILLED and filled_size <= 0:
+                status = OrderStatus.CANCELED
             timestamp = order_details.created_at
             order_type_value = order_details.type.value
             time_in_force_value = order_details.time_in_force

@@ -1068,7 +1068,15 @@ wheels = [
 
 [[package]]
 name = "pybinbot"
+<<<<<<< HEAD
 version = "1.11.7"
+=======
+<<<<<<< Updated upstream
+version = "1.11.5"
+=======
+version = "1.11.8"
+>>>>>>> Stashed changes
+>>>>>>> 5e6be81 (Fix order status mapping for Kucoin Futures orders)
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
