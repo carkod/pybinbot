@@ -28,7 +28,7 @@ def _make_kucoin_candles(n: int = 48) -> list[list]:
         high_price = close_price + 0.2
         low_price = open_price - 0.2
         volume = 1000.0 + (i * 25.0)
-        quote_asset_volume = volume * close_price
+        close_time = open_time + 299_999
         candles.append(
             [
                 open_time,
@@ -37,7 +37,7 @@ def _make_kucoin_candles(n: int = 48) -> list[list]:
                 f"{low_price:.1f}",
                 f"{close_price:.1f}",
                 volume,
-                quote_asset_volume,
+                close_time,
             ]
         )
     return candles
@@ -132,6 +132,16 @@ class TestCandles:
         df = candles_kucoin.pre_process()
         for col in ("open", "high", "low", "close"):
             assert col in df.columns
+
+    def test_pre_process_kucoin_futures_preserves_close_time(
+        self, kucoin_candles, candles_kucoin: Candles
+    ):
+        df = candles_kucoin.pre_process()
+
+        assert df["close_time"].tolist() == [row[6] for row in kucoin_candles]
+        assert df["quote_asset_volume"].tolist() == pytest.approx(
+            [float(row[4]) * float(row[5]) for row in kucoin_candles]
+        )
 
     def test_pre_process_binance(self, binance_candles):
         obj = Candles(ExchangeId.BINANCE, binance_candles)

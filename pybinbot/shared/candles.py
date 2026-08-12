@@ -179,44 +179,21 @@ class Candles:
         df_raw = DataFrame(candles)
 
         if df_raw.shape[1] == 7:
-            sample = df_raw.iloc[0]
-            col2 = float(sample[2])
-            col3 = float(sample[3])
-            is_futures = col2 >= col3
-
-            if is_futures:
-                df_raw.columns = [
-                    "open_time",
-                    "open",
-                    "high",
-                    "low",
-                    "close",
-                    "volume",
-                    "quote_asset_volume",
-                ]
-            else:
-                df_raw.columns = [
-                    "open_time",
-                    "open",
-                    "close",
-                    "high",
-                    "low",
-                    "volume",
-                    "quote_asset_volume",
-                ]
-                df_raw = df_raw[
-                    [
-                        "open_time",
-                        "open",
-                        "high",
-                        "low",
-                        "close",
-                        "volume",
-                        "quote_asset_volume",
-                    ]
-                ]
-
-            df_raw["close_time"] = df_raw["open_time"]
+            # KuCoin futures adapters return Binance-compatible rows:
+            # open_time, open, high, low, close, volume, close_time.
+            # KuCoin spot adapters include quote turnover as an eighth column.
+            df_raw.columns = [
+                "open_time",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "close_time",
+            ]
+            df_raw["quote_asset_volume"] = to_numeric(
+                df_raw["volume"], errors="coerce"
+            ) * to_numeric(df_raw["close"], errors="coerce")
             return df_raw
 
         raise ValueError(f"Unexpected KuCoin kline column count: {df_raw.shape[1]}")
