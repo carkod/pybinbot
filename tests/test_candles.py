@@ -1,4 +1,4 @@
-from pybinbot import Candles
+from pybinbot import Candles, ExchangeId
 
 
 def test_partition_closed_candles_uses_explicit_close_timestamps():
@@ -64,3 +64,36 @@ def test_partition_closed_candles_normalizes_seconds():
 
     assert completed == [closed]
     assert active is None
+
+
+def test_preprocessed_kucoin_futures_forming_candle_is_not_completed():
+    interval_ms = 15 * 60 * 1000
+    now_ms = 1_700_000_600_000
+    closed = [
+        now_ms - 2 * interval_ms,
+        100.0,
+        102.0,
+        99.0,
+        101.0,
+        10.0,
+        now_ms - interval_ms - 1,
+    ]
+    current = [
+        now_ms - 5 * 60 * 1000,
+        101.0,
+        103.0,
+        100.0,
+        102.0,
+        5.0,
+        now_ms + 10 * 60 * 1000 - 1,
+    ]
+
+    frame = Candles(ExchangeId.KUCOIN, [closed, current]).pre_process()
+    completed, active = Candles.partition_closed_candles(
+        frame.to_dict("records"),
+        now_ms=now_ms,
+    )
+
+    assert [row["open_time"] for row in completed] == [closed[0]]
+    assert active is not None
+    assert active["open_time"] == current[0]
