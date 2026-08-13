@@ -41,8 +41,22 @@ from pybinbot.models.routes import (
     MarketBreadthSeriesResponse,
     StandardResponse,
 )
+from pybinbot.models.derivatives import (
+    BinanceFundingRate,
+    BinanceFundingRatesResponse,
+    FundingRateHistoryPoint,
+    FuturesContractMarketData,
+    OpenInterestHistoryPoint,
+    OpenInterestHistoryResponse,
+)
 
 __all__ = [
+    "BinanceFundingRate",
+    "BinanceFundingRatesResponse",
+    "FundingRateHistoryPoint",
+    "FuturesContractMarketData",
+    "OpenInterestHistoryPoint",
+    "OpenInterestHistoryResponse",
     "AutotradeSettings",
     "AutotradeSettingsResponse",
     "AutotradeSettingsSchema",

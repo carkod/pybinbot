@@ -88,6 +88,7 @@ class KucoinRest:
         )
         self.futures_service = self.futures_client.rest_service().get_futures_service()
         self.futures_market_api = self.futures_service.get_market_api()
+        self.futures_funding_fees_api = self.futures_service.get_funding_fees_api()
         self.futures_order_api = self.futures_service.get_order_api()
         self.futures_positions_api = self.futures_service.get_positions_api()
         self.deposit_api = (
