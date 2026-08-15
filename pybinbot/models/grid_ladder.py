@@ -40,6 +40,7 @@ class GridOrderRole(str, Enum):
 
 
 class GridDeploymentRequest(BaseModel):
+    signal_id: int | None = None
     symbol: str
     fiat: str
     exchange: ExchangeId
@@ -165,6 +166,7 @@ class GridLadderRecord(BaseModel):
     """
 
     id: str | None = None
+    signal_id: int | None = None
     symbol: str
     fiat: str
     exchange: ExchangeId | str

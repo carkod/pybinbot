@@ -329,13 +329,14 @@ class TestBotRouteResponses:
         assert response.data == {"id": "550e8400-e29b-41d4-a716-446655440000"}
 
     def test_production_bot_response_keeps_complete_bot_data_typed(self) -> None:
-        bot = BotModel(pair="BTCUSDTM")
+        bot = BotModel(pair="BTCUSDTM", signal_id=42)
 
         response = ProductionBotResponse.model_validate(
             {"message": "Successfully retrieved bot.", "data": bot.model_dump()}
         )
 
         assert isinstance(response.data, BotModel)
+        assert response.data.signal_id == 42
 
     def test_create_bot_validates_bot_response(self) -> None:
         api_class = load_binbot_api_class()
