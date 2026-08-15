@@ -23,6 +23,7 @@ class RecoveryParams(BaseModel):
 
 class BotBase(BaseModel):
     pair: str
+    signal_id: int | None = None
     fiat: str = Field(default="USDC")
     quote_asset: QuoteAssets = Field(default=QuoteAssets.USDC)
     fiat_order_size: Amount = Field(

@@ -57,8 +57,9 @@ def test_grid_deployment_request_rejects_breakout_inside_range() -> None:
 
 
 def test_grid_deployment_request_accepts_valid_five_level_ladder() -> None:
-    deployment = GridDeploymentRequest(**valid_grid_payload())
+    deployment = GridDeploymentRequest(signal_id=42, **valid_grid_payload())
 
+    assert deployment.signal_id == 42
     assert deployment.symbol == "BTCUSDC"
     assert deployment.exchange is ExchangeId.KUCOIN
     assert deployment.market_type is MarketType.SPOT
@@ -214,6 +215,7 @@ def test_grid_ladder_client_methods_use_explicit_urls(
     calls: list[dict] = []
     ladder_detail = {
         "id": "ladder-1",
+        "signal_id": 42,
         "symbol": "BTCUSDC",
         "fiat": "USDC",
         "exchange": "kucoin",
@@ -246,7 +248,9 @@ def test_grid_ladder_client_methods_use_explicit_urls(
     assert isinstance(api.create_grid_ladder({"symbol": "BTCUSDC"}), GridLadderRecord)
     assert len(api.get_grid_ladders()) == 1
     assert len(api.get_active_grid_ladders()) == 1
-    assert api.get_grid_ladder("ladder-1").id == "ladder-1"
+    ladder = api.get_grid_ladder("ladder-1")
+    assert ladder.id == "ladder-1"
+    assert ladder.signal_id == 42
     assert api.close_grid_ladder("ladder-1", {"reason": "test"}).id == "ladder-1"
 
     assert calls == [
