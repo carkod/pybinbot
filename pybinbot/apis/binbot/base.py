@@ -316,20 +316,20 @@ class BinbotApi:
         created record on success, None on failure (errors are logged but
         never raised so signal recording can't break the trade path).
         """
-        signal = SignalCreate(
-            algorithm_name=algorithm_name,
-            symbol=symbol,
-            generated_at=generated_at,
-            direction=direction,
-            autotrade=autotrade,
-            current_regime=current_regime,
-            signal_kind=signal_kind,
-            context=context or {},
-            bot_params=bot_params or {},
-            grid_params=grid_params or {},
-            indicators=indicators or {},
-        )
         try:
+            signal = SignalCreate(
+                algorithm_name=algorithm_name,
+                symbol=symbol,
+                generated_at=generated_at,
+                direction=direction,
+                autotrade=autotrade,
+                current_regime=current_regime,
+                signal_kind=signal_kind,
+                context=context or {},
+                bot_params=bot_params or {},
+                grid_params=grid_params or {},
+                indicators=indicators or {},
+            )
             response = await self.fetch(
                 url=self.bb_signals_url,
                 method="POST",

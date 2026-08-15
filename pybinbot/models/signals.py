@@ -119,6 +119,10 @@ class SignalsConsumer(BaseModel):
     bot_params: BotBase | None = Field(
         default=None, description="Parameters for bot creation"
     )
+    open_interest_sizing: OpenInterestSizingDecision | None = Field(
+        default=None,
+        description="Signal-time OI evidence used to finalize fiat_order_size",
+    )
     grid_params: GridDeploymentRequest | None = Field(
         default=None, description="Parameters for grid ladder deployment"
     )
