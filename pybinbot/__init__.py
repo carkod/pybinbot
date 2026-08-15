@@ -99,9 +99,17 @@ from pybinbot.models.grid_ladder import (
 )
 from pybinbot.models.signals import (
     HABollinguerSpread,
-    SignalsConsumer,
     KlineProduceModel,
     KlineSchema,
+    OpenInterestPositioningState,
+    OpenInterestSizingDecision,
+    OpenInterestSizingEvidence,
+    SignalCreate,
+    SignalListRecord,
+    SignalListResponse,
+    SignalModel,
+    SignalResponse,
+    SignalsConsumer,
 )
 from pybinbot.models.symbol import SymbolModel
 from pybinbot.models.routes import (
@@ -114,6 +122,7 @@ from pybinbot.models.derivatives import (
     BinanceFundingRatesResponse,
     FundingRateHistoryPoint,
     FuturesContractMarketData,
+    OpenInterestInterval,
     OpenInterestHistoryPoint,
     OpenInterestHistoryResponse,
 )
@@ -158,8 +167,12 @@ __all__ = [
     "BinanceFundingRatesResponse",
     "FundingRateHistoryPoint",
     "FuturesContractMarketData",
+    "OpenInterestInterval",
     "OpenInterestHistoryPoint",
     "OpenInterestHistoryResponse",
+    "OpenInterestPositioningState",
+    "OpenInterestSizingDecision",
+    "OpenInterestSizingEvidence",
     # subpackages
     "shared",
     "models",
@@ -202,6 +215,11 @@ __all__ = [
     "GridLevelStatus",
     "GridOrderRole",
     "HABollinguerSpread",
+    "SignalCreate",
+    "SignalListRecord",
+    "SignalListResponse",
+    "SignalModel",
+    "SignalResponse",
     "SignalsConsumer",
     "TestAutotradeSettingsSchema",
     "KlineProduceModel",

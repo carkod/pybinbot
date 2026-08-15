@@ -87,6 +87,7 @@ from pybinbot.shared.maths import round_numbers
 from pybinbot.models.derivatives import (
     FundingRateHistoryPoint,
     FuturesContractMarketData,
+    OpenInterestInterval,
     OpenInterestHistoryPoint,
     OpenInterestHistoryResponse,
 )
@@ -142,7 +143,7 @@ class KucoinFutures(KucoinRest):
                 {
                     "symbol": contract.symbol,
                     "settle_currency": contract.settle_currency,
-                    "is_inverse": contract.is_inverse,
+                    "is_inverse": bool(contract.is_inverse),
                     "expire_date": contract.expire_date,
                     "multiplier": contract.multiplier,
                     "open_interest": contract.open_interest,
@@ -154,20 +155,36 @@ class KucoinFutures(KucoinRest):
                 }
             )
             for contract in response.data or []
+            if contract.symbol is not None
+            and contract.multiplier is not None
+            and contract.open_interest is not None
         ]
 
     def get_open_interest_history(
         self,
         symbol: str,
-        interval: str = "5min",
+        interval: OpenInterestInterval = "5min",
         page_size: int = 100,
+        start_at: int | None = None,
+        end_at: int | None = None,
     ) -> list[OpenInterestHistoryPoint]:
         """Return UTA open-interest history not yet exposed by the SDK."""
+        if not symbol.strip():
+            raise ValueError("symbol must not be empty")
+        if page_size <= 0:
+            raise ValueError("page_size must be greater than 0")
+        if start_at is not None and end_at is not None and start_at > end_at:
+            raise ValueError("start_at must be less than or equal to end_at")
+
         params: dict[str, str | int] = {
-            "symbol": symbol,
+            "symbol": symbol.upper().strip(),
             "interval": interval,
             "pageSize": page_size,
         }
+        if start_at is not None:
+            params["startAt"] = start_at
+        if end_at is not None:
+            params["endAt"] = end_at
         response = request(
             method="GET",
             url=self.OPEN_INTEREST_HISTORY_URL,
@@ -185,9 +202,13 @@ class KucoinFutures(KucoinRest):
         end_at: int,
     ) -> list[FundingRateHistoryPoint]:
         """Return settled funding rates through the Universal SDK."""
+        if not symbol.strip():
+            raise ValueError("symbol must not be empty")
+        if start_at > end_at:
+            raise ValueError("start_at must be less than or equal to end_at")
         request_data = (
             GetPublicFundingHistoryReqBuilder()
-            .set_symbol(symbol)
+            .set_symbol(symbol.upper().strip())
             .set_from_(start_at)
             .set_to(end_at)
             .build()
@@ -198,6 +219,7 @@ class KucoinFutures(KucoinRest):
         return [
             FundingRateHistoryPoint.model_validate(item, from_attributes=True)
             for item in response.data or []
+            if item.funding_rate is not None
         ]
 
     def get_mark_price(self, symbol: str) -> float:

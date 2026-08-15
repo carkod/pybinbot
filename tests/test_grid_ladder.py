@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from pybinbot.apis.binbot.base import BinbotApi
 from pybinbot.models.bot_base import BotBase
 from pybinbot.models.grid_ladder import GridDeploymentRequest, GridLadderRecord
-from pybinbot.models.signals import SignalsConsumer
+from pybinbot.models.signals import SignalModel, SignalsConsumer
 from pybinbot.shared.enums import ExchangeId, MarketType
 
 
@@ -105,7 +105,11 @@ async def test_create_signal_includes_signal_kind_and_grid_params_in_payload(
 
     async def fake_fetch(**kwargs):
         captured.update(kwargs)
-        return {"data": {"id": "signal-1"}}
+        return {
+            "message": "Signal recorded",
+            "error": 0,
+            "data": {"id": 1, **kwargs["json"]},
+        }
 
     monkeypatch.setattr(api, "fetch", fake_fetch)
 
@@ -120,7 +124,9 @@ async def test_create_signal_includes_signal_kind_and_grid_params_in_payload(
         grid_params={"symbol": "BTCUSDC"},
     )
 
-    assert result == {"id": "signal-1"}
+    assert isinstance(result, SignalModel)
+    assert result.id == 1
+    assert result.algorithm_name == "grid-test"
     assert captured["url"] == "https://example.com/signals"
     assert captured["method"] == "POST"
     assert captured["json"]["signal_kind"] == "grid_deploy"
