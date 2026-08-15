@@ -7,6 +7,10 @@ from requests import Session, request, HTTPError
 from pybinbot.shared.handlers import handle_binance_errors
 from pybinbot.shared.cache import cache
 from pybinbot.apis.binbot.exceptions import IsolateBalanceError
+from pybinbot.models.derivatives import (
+    BinanceFundingRate,
+    BinanceFundingRatesResponse,
+)
 
 
 class BinanceApi:
@@ -45,6 +49,7 @@ class BinanceApi:
     trade_fee = f"{BASE}/sapi/v1/asset/tradeFee"
     wallet_balance_url = f"{BASE}/sapi/v1/asset/wallet/balance"
     user_asset_url = f"{BASE}/sapi/v3/asset/getUserAsset"
+    futures_premium_index_url = "https://fapi.binance.com/fapi/v1/premiumIndex"
 
     # order, user data, only works with api.binance host
     user_data_stream = "https://api.binance.com/api/v3/userDataStream"
@@ -244,6 +249,11 @@ class BinanceApi:
     def get_ticker_price(self, symbol: str) -> float:
         data = self.request(url=f"{self.ticker_price_url}", params={"symbol": symbol})
         return float(data["price"])
+
+    def get_futures_funding_rates(self) -> list[BinanceFundingRate]:
+        data = self.request(url=self.futures_premium_index_url)
+        response = BinanceFundingRatesResponse.model_validate(data)
+        return response.root
 
     def get_ui_klines(
         self, symbol, interval, limit=500, start_time=None, end_time=None

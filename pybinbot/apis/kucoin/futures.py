@@ -28,6 +28,9 @@ from kucoin_universal_sdk.generate.futures.market import (
     GetPartOrderBookReqBuilder,
     GetSymbolResp,
 )
+from kucoin_universal_sdk.generate.futures.fundingfees import (
+    GetPublicFundingHistoryReqBuilder,
+)
 from kucoin_universal_sdk.generate.account.transfer.model_flex_transfer_resp import (
     FlexTransferResp,
 )
@@ -81,6 +84,12 @@ from kucoin_universal_sdk.generate.account.deposit import (
 )
 
 from pybinbot.shared.maths import round_numbers
+from pybinbot.models.derivatives import (
+    FundingRateHistoryPoint,
+    FuturesContractMarketData,
+    OpenInterestHistoryPoint,
+    OpenInterestHistoryResponse,
+)
 
 Kline = list[int | float]
 MarginModeName = Literal["ISOLATED", "CROSS"]
@@ -109,6 +118,7 @@ class KucoinFutures(KucoinRest):
     _EXIT_MAX_SLIPPAGE_HARD_PCT: float = 0.005
     # Seconds to wait for each IOC step to be processed before checking fill.
     _EXIT_ESCALATION_SLEEP_S: float = 2.0
+    OPEN_INTEREST_HISTORY_URL = "https://api.kucoin.com/api/ua/v1/market/open-interest"
 
     def __init__(self, key: str, secret: str, passphrase: str) -> None:
         self.DEFAULT_LEVERAGE = 3
@@ -123,6 +133,72 @@ class KucoinFutures(KucoinRest):
     def get_symbol_info(self, symbol: str) -> GetSymbolResp:
         req = GetSymbolReqBuilder().set_symbol(symbol).build()
         return self.futures_market_api.get_symbol(req)
+
+    def get_active_contracts(self) -> list[FuturesContractMarketData]:
+        """Return all active futures contracts through the Universal SDK."""
+        response = self.futures_market_api.get_all_symbols()
+        return [
+            FuturesContractMarketData.model_validate(
+                {
+                    "symbol": contract.symbol,
+                    "settle_currency": contract.settle_currency,
+                    "is_inverse": contract.is_inverse,
+                    "expire_date": contract.expire_date,
+                    "multiplier": contract.multiplier,
+                    "open_interest": contract.open_interest,
+                    "mark_price": contract.mark_price,
+                    "index_price": contract.index_price,
+                    "funding_fee_rate": contract.funding_fee_rate,
+                    "funding_rate_granularity": contract.funding_rate_granularity,
+                    "turnover_24h": contract.turnover_of24h,
+                }
+            )
+            for contract in response.data or []
+        ]
+
+    def get_open_interest_history(
+        self,
+        symbol: str,
+        interval: str = "5min",
+        page_size: int = 100,
+    ) -> list[OpenInterestHistoryPoint]:
+        """Return UTA open-interest history not yet exposed by the SDK."""
+        params: dict[str, str | int] = {
+            "symbol": symbol,
+            "interval": interval,
+            "pageSize": page_size,
+        }
+        response = request(
+            method="GET",
+            url=self.OPEN_INTEREST_HISTORY_URL,
+            params=params,
+            timeout=10,
+        )
+        response.raise_for_status()
+        payload = OpenInterestHistoryResponse.model_validate(response.json())
+        return payload.data
+
+    def get_public_funding_history(
+        self,
+        symbol: str,
+        start_at: int,
+        end_at: int,
+    ) -> list[FundingRateHistoryPoint]:
+        """Return settled funding rates through the Universal SDK."""
+        request_data = (
+            GetPublicFundingHistoryReqBuilder()
+            .set_symbol(symbol)
+            .set_from_(start_at)
+            .set_to(end_at)
+            .build()
+        )
+        response = self.futures_funding_fees_api.get_public_funding_history(
+            request_data
+        )
+        return [
+            FundingRateHistoryPoint.model_validate(item, from_attributes=True)
+            for item in response.data or []
+        ]
 
     def get_mark_price(self, symbol: str) -> float:
         req = GetMarkPriceReqBuilder().set_symbol(symbol).build()

@@ -109,6 +109,14 @@ from pybinbot.models.routes import (
     MarketBreadthSeriesResponse,
     StandardResponse,
 )
+from pybinbot.models.derivatives import (
+    BinanceFundingRate,
+    BinanceFundingRatesResponse,
+    FundingRateHistoryPoint,
+    FuturesContractMarketData,
+    OpenInterestHistoryPoint,
+    OpenInterestHistoryResponse,
+)
 from pybinbot.apis.binance.base import BinanceApi
 from pybinbot.apis.binbot.base import BinbotApi
 from pybinbot.apis.binbot.exceptions import (
@@ -146,6 +154,12 @@ from . import models, shared, apis
 configure_logging()
 
 __all__ = [
+    "BinanceFundingRate",
+    "BinanceFundingRatesResponse",
+    "FundingRateHistoryPoint",
+    "FuturesContractMarketData",
+    "OpenInterestHistoryPoint",
+    "OpenInterestHistoryResponse",
     # subpackages
     "shared",
     "models",
