@@ -1,4 +1,16 @@
+from typing import Literal, TypeAlias
+
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator
+
+
+OpenInterestInterval: TypeAlias = Literal[
+    "5min",
+    "15min",
+    "30min",
+    "1hour",
+    "4hour",
+    "1day",
+]
 
 
 class FuturesContractMarketData(BaseModel):

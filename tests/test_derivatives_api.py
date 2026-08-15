@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 from typing import Any
 
+import pytest
+
 from pybinbot.apis.binance.base import BinanceApi
 from pybinbot.apis.kucoin.futures import KucoinFutures
 
@@ -66,9 +68,11 @@ def test_get_open_interest_history_validates_raw_uta_response(
     monkeypatch.setattr("pybinbot.apis.kucoin.futures.request", fake_request)
 
     history = api.get_open_interest_history(
-        "XBTUSDTM",
+        " xbtusdtm ",
         interval="5min",
         page_size=100,
+        start_at=500,
+        end_at=2_000,
     )
 
     assert response.raise_for_status_called is True
@@ -79,11 +83,22 @@ def test_get_open_interest_history_validates_raw_uta_response(
             "symbol": "XBTUSDTM",
             "interval": "5min",
             "pageSize": 100,
+            "startAt": 500,
+            "endAt": 2_000,
         },
         "timeout": 10,
     }
     assert history[0].timestamp == 1_000
     assert history[0].open_interest == 42.5
+
+
+def test_get_open_interest_history_rejects_invalid_ranges() -> None:
+    api = object.__new__(KucoinFutures)
+
+    with pytest.raises(ValueError, match="page_size"):
+        api.get_open_interest_history("XBTUSDTM", page_size=0)
+    with pytest.raises(ValueError, match="start_at"):
+        api.get_open_interest_history("XBTUSDTM", start_at=2_000, end_at=1_000)
 
 
 def test_get_public_funding_history_uses_sdk_and_returns_typed_models() -> None:

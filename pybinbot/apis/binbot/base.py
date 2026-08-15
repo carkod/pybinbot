@@ -16,6 +16,9 @@ from pybinbot import (
     GridLadderRecord,
     MarketBreadthSeries,
     MarketBreadthSeriesResponse,
+    SignalCreate,
+    SignalModel,
+    SignalResponse,
     Status,
     SymbolModel,
     TestAutotradeSettingsSchema,
@@ -302,35 +305,37 @@ class BinbotApi:
         direction: str,
         autotrade: bool = False,
         current_regime: str | None = None,
-        context: dict | None = None,
-        bot_params: dict | None = None,
-        indicators: dict | None = None,
+        context: dict[str, Any] | None = None,
+        bot_params: dict[str, Any] | None = None,
+        indicators: dict[str, Any] | None = None,
         signal_kind: str = "bot",
-        grid_params: dict | None = None,
-    ) -> dict | None:
+        grid_params: dict[str, Any] | None = None,
+    ) -> SignalModel | None:
         """
         Persist a strategy-emitted signal via POST /signals. Returns the
         created record on success, None on failure (errors are logged but
         never raised so signal recording can't break the trade path).
         """
-        payload = {
-            "algorithm_name": algorithm_name,
-            "symbol": symbol,
-            "generated_at": generated_at.isoformat(),
-            "direction": direction,
-            "autotrade": autotrade,
-            "current_regime": current_regime,
-            "signal_kind": signal_kind,
-            "context": context or {},
-            "bot_params": bot_params or {},
-            "grid_params": grid_params or {},
-            "indicators": indicators or {},
-        }
         try:
-            response = await self.fetch(
-                url=self.bb_signals_url, method="POST", json=payload
+            signal = SignalCreate(
+                algorithm_name=algorithm_name,
+                symbol=symbol,
+                generated_at=generated_at,
+                direction=direction,
+                autotrade=autotrade,
+                current_regime=current_regime,
+                signal_kind=signal_kind,
+                context=context or {},
+                bot_params=bot_params or {},
+                grid_params=grid_params or {},
+                indicators=indicators or {},
             )
-            return response.get("data") if isinstance(response, dict) else None
+            response = await self.fetch(
+                url=self.bb_signals_url,
+                method="POST",
+                json=signal.model_dump(mode="json"),
+            )
+            return SignalResponse.model_validate(response).data
         except Exception as exc:
             logger.warning(
                 "create_signal failed for %s %s: %s", algorithm_name, symbol, exc
@@ -345,12 +350,12 @@ class BinbotApi:
         direction: str,
         autotrade: bool = False,
         current_regime: str | None = None,
-        context: dict | None = None,
-        bot_params: dict | None = None,
-        indicators: dict | None = None,
+        context: dict[str, Any] | None = None,
+        bot_params: dict[str, Any] | None = None,
+        indicators: dict[str, Any] | None = None,
         signal_kind: str = "bot",
-        grid_params: dict | None = None,
-    ) -> asyncio.Task:
+        grid_params: dict[str, Any] | None = None,
+    ) -> asyncio.Task[SignalModel | None]:
         """
         Fire-and-forget version of create_signal. Returns immediately so the
         caller (strategy / autotrade path) is not blocked by the HTTP write.
@@ -376,7 +381,7 @@ class BinbotApi:
 
     async def create_grid_signal(
         self, grid_params: GridDeploymentRequest, autotrade: bool
-    ) -> dict | None:
+    ) -> SignalModel | None:
         """Persist a grid deployment signal using the generic signal endpoint."""
         return await self.create_signal(
             algorithm_name=grid_params.algorithm_name,

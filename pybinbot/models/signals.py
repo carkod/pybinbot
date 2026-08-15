@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pybinbot.shared.enums import MarketType
@@ -7,6 +7,86 @@ from pandera.typing import Series
 from pandera.pandas import DataFrameModel
 from pybinbot.models.bot_base import BotBase
 from pybinbot.models.grid_ladder import GridDeploymentRequest
+from pybinbot.models.routes import StandardResponse
+
+
+OpenInterestPositioningState: TypeAlias = Literal[
+    "NEUTRAL",
+    "NEW_LEVERAGE_LONG",
+    "NEW_LEVERAGE_SHORT",
+    "SHORT_SQUEEZE",
+    "DELEVERAGING_FLUSH",
+    "CASCADE_RISK",
+]
+OpenInterestSizingEvidence: TypeAlias = Literal[
+    "MODERATELY_SUPPORTIVE",
+    "STRONGLY_SUPPORTIVE",
+    "MODERATELY_ADVERSE",
+    "STRONGLY_ADVERSE",
+]
+
+
+class OpenInterestSizingDecision(BaseModel):
+    """Signal-time OI margin adjustment retained as signal provenance."""
+
+    baseline_margin: float = Field(gt=0)
+    adjusted_margin: float = Field(gt=0)
+    multiplier: float = Field(gt=0)
+    oi_change_15m: float | None = None
+    positioning_state: OpenInterestPositioningState
+    evidence: OpenInterestSizingEvidence
+    snapshot_timestamp: int = Field(ge=0)
+
+
+class SignalCreate(BaseModel):
+    """Payload accepted by the binbot signals endpoint."""
+
+    algorithm_name: str = Field(max_length=128)
+    symbol: str = Field(max_length=64)
+    generated_at: datetime
+    direction: str = Field(max_length=16)
+    autotrade: bool = False
+    current_regime: str | None = Field(default=None, max_length=32)
+    context: dict[str, Any] = Field(default_factory=dict)
+    bot_params: dict[str, Any] = Field(default_factory=dict)
+    indicators: dict[str, Any] = Field(default_factory=dict)
+    signal_kind: str = Field(default="bot", max_length=32)
+    grid_params: dict[str, Any] = Field(default_factory=dict)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SignalModel(SignalCreate):
+    """Pydantic representation of a persisted ``signals`` table row."""
+
+    id: int | None = None
+
+
+class SignalListRecord(BaseModel):
+    """Signal row returned with or without the optional JSON payloads."""
+
+    id: int
+    algorithm_name: str = Field(max_length=128)
+    symbol: str = Field(max_length=64)
+    generated_at: datetime
+    direction: str = Field(max_length=16)
+    autotrade: bool = False
+    current_regime: str | None = Field(default=None, max_length=32)
+    signal_kind: str = Field(default="bot", max_length=32)
+    context: dict[str, Any] | None = None
+    bot_params: dict[str, Any] | None = None
+    indicators: dict[str, Any] | None = None
+    grid_params: dict[str, Any] | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SignalResponse(StandardResponse):
+    data: SignalModel
+
+
+class SignalListResponse(StandardResponse):
+    data: list[SignalListRecord]
 
 
 class HABollinguerSpread(BaseModel):
@@ -38,6 +118,10 @@ class SignalsConsumer(BaseModel):
     )
     bot_params: BotBase | None = Field(
         default=None, description="Parameters for bot creation"
+    )
+    open_interest_sizing: OpenInterestSizingDecision | None = Field(
+        default=None,
+        description="Signal-time OI evidence used to finalize fiat_order_size",
     )
     grid_params: GridDeploymentRequest | None = Field(
         default=None, description="Parameters for grid ladder deployment"

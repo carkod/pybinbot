@@ -6,7 +6,11 @@ from pydantic import ValidationError
 from pybinbot.apis.binbot.base import BinbotApi
 from pybinbot.models.bot_base import BotBase
 from pybinbot.models.grid_ladder import GridDeploymentRequest, GridLadderRecord
-from pybinbot.models.signals import SignalsConsumer
+from pybinbot.models.signals import (
+    OpenInterestSizingDecision,
+    SignalModel,
+    SignalsConsumer,
+)
 from pybinbot.shared.enums import ExchangeId, MarketType
 
 
@@ -81,6 +85,22 @@ def test_signals_consumer_accepts_normal_bot_signal_unchanged() -> None:
     assert signal.bot_params.pair == "BTCUSDC"
 
 
+def test_signals_consumer_retains_open_interest_sizing_as_signal_state() -> None:
+    decision = OpenInterestSizingDecision(
+        baseline_margin=4.0,
+        adjusted_margin=8.0,
+        multiplier=2.0,
+        oi_change_15m=0.02,
+        positioning_state="NEW_LEVERAGE_LONG",
+        evidence="STRONGLY_SUPPORTIVE",
+        snapshot_timestamp=1_700_000_000_000,
+    )
+
+    signal = SignalsConsumer(open_interest_sizing=decision)
+
+    assert signal.open_interest_sizing == decision
+
+
 def test_signals_consumer_accepts_grid_deploy_signal_with_grid_params() -> None:
     grid_params = GridDeploymentRequest(**valid_grid_payload())
 
@@ -105,7 +125,11 @@ async def test_create_signal_includes_signal_kind_and_grid_params_in_payload(
 
     async def fake_fetch(**kwargs):
         captured.update(kwargs)
-        return {"data": {"id": "signal-1"}}
+        return {
+            "message": "Signal recorded",
+            "error": 0,
+            "data": {"id": 1, **kwargs["json"]},
+        }
 
     monkeypatch.setattr(api, "fetch", fake_fetch)
 
@@ -120,7 +144,9 @@ async def test_create_signal_includes_signal_kind_and_grid_params_in_payload(
         grid_params={"symbol": "BTCUSDC"},
     )
 
-    assert result == {"id": "signal-1"}
+    assert isinstance(result, SignalModel)
+    assert result.id == 1
+    assert result.algorithm_name == "grid-test"
     assert captured["url"] == "https://example.com/signals"
     assert captured["method"] == "POST"
     assert captured["json"]["signal_kind"] == "grid_deploy"
@@ -152,6 +178,31 @@ async def test_create_grid_signal_serializes_deployment_request_correctly(
     assert captured["signal_kind"] == "grid_deploy"
     assert captured["bot_params"] == {}
     assert captured["grid_params"] == deployment.model_dump(mode="json")
+
+
+@pytest.mark.asyncio
+async def test_create_grid_signal_returns_none_when_signal_payload_is_invalid(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    api = object.__new__(BinbotApi)
+    api.bb_signals_url = "https://example.com/signals"
+    payload = valid_grid_payload()
+    payload["algorithm_name"] = "x" * 129
+    deployment = GridDeploymentRequest(**payload)
+    fetch_calls: list[dict] = []
+
+    async def fake_fetch(**kwargs):
+        fetch_calls.append(kwargs)
+
+    monkeypatch.setattr(api, "fetch", fake_fetch)
+
+    with caplog.at_level("WARNING"):
+        result = await api.create_grid_signal(deployment, autotrade=True)
+
+    assert result is None
+    assert fetch_calls == []
+    assert "create_signal failed" in caplog.text
 
 
 def test_grid_ladder_client_methods_use_explicit_urls(

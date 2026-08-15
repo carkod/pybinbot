@@ -10,6 +10,7 @@ from unittest.mock import patch
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
 from pybinbot.models.bot import BotModel, BotResponse as ProductionBotResponse
+from pybinbot.models.signals import SignalCreate, SignalModel, SignalResponse
 from pybinbot.shared.enums import ExchangeId
 
 
@@ -149,6 +150,9 @@ def load_binbot_api_class():
     pybinbot_stub.GridLadderRecord = _GridLadderRecord
     pybinbot_stub.MarketBreadthSeries = _MarketBreadthSeries
     pybinbot_stub.MarketBreadthSeriesResponse = _MarketBreadthSeriesResponse
+    pybinbot_stub.SignalCreate = SignalCreate
+    pybinbot_stub.SignalModel = SignalModel
+    pybinbot_stub.SignalResponse = SignalResponse
 
     models_stub = types.ModuleType("pybinbot.models")
     symbol_stub = types.ModuleType("pybinbot.models.symbol")
