@@ -20,6 +20,9 @@ class FuturesContractMarketData(BaseModel):
 
     symbol: str
     settle_currency: str | None = None
+    quote_currency: str | None = None
+    status: str | None = None
+    source_exchanges: tuple[str, ...] = ()
     is_inverse: bool = False
     expire_date: int | None = None
     multiplier: float

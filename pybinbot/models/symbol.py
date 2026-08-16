@@ -21,6 +21,11 @@ class SymbolModel(BaseModel):
     active: bool = Field(default=True, description="Blacklisted items = False")
     blacklist_reason: str = Field(default="")
     description: str = Field(default="", description="Description of the symbol")
+    asset_class: str = Field(
+        default="",
+        max_length=32,
+        description="Persistent market regime used to route trading strategies",
+    )
     quote_asset: str = Field(
         default="", description="in BTCUSDC, BTC would be quote asset"
     )
