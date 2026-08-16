@@ -28,4 +28,5 @@ def test_symbol_update_payload_rejects_unknown_fields() -> None:
 def test_symbol_multiplier_defaults_to_one() -> None:
     symbol = SymbolModel(id="BTCUSDT", exchange_id="binance")
 
+    assert symbol.asset_class == ""
     assert symbol.multiplier == 1.0

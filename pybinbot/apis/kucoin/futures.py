@@ -143,6 +143,9 @@ class KucoinFutures(KucoinRest):
                 {
                     "symbol": contract.symbol,
                     "settle_currency": contract.settle_currency,
+                    "quote_currency": contract.quote_currency,
+                    "status": contract.status.value if contract.status else None,
+                    "source_exchanges": tuple(contract.source_exchanges or []),
                     "is_inverse": bool(contract.is_inverse),
                     "expire_date": contract.expire_date,
                     "multiplier": contract.multiplier,
@@ -746,6 +749,58 @@ class KucoinFutures(KucoinRest):
 
         return klines[-limit:]
 
+    def get_historical_klines(
+        self,
+        symbol: str,
+        interval: str,
+        start_time: int,
+        end_time: int,
+        page_size: int = 200,
+        attempts: int = 8,
+    ) -> list[Kline]:
+        """Return a complete futures candle range across KuCoin result pages."""
+        if not symbol.strip():
+            raise ValueError("symbol must not be empty")
+        if start_time >= end_time:
+            raise ValueError("start_time must be less than end_time")
+        if not 1 <= page_size <= 200:
+            raise ValueError("page_size must be between 1 and 200")
+        if attempts < 1:
+            raise ValueError("attempts must be greater than 0")
+
+        interval_ms = KucoinKlineIntervals(interval).to_minutes() * 60 * 1000
+        rows: list[Kline] = []
+        page_end = end_time
+        while page_end >= start_time:
+            page_start = max(
+                start_time,
+                page_end - (page_size - 1) * interval_ms,
+            )
+            delay_seconds = 0.5
+            for attempt in range(attempts):
+                try:
+                    rows.extend(
+                        self.get_klines(
+                            symbol=symbol.upper().strip(),
+                            interval=interval,
+                            limit=page_size,
+                            start_time=page_start,
+                            end_time=page_end,
+                        )
+                    )
+                    break
+                except Exception:
+                    if attempt == attempts - 1:
+                        raise
+                    sleep(delay_seconds)
+                    delay_seconds *= 2
+            page_end = page_start - interval_ms
+
+        return sorted(
+            {int(row[0]): row for row in rows}.values(),
+            key=lambda row: row[0],
+        )
+
     def get_ui_klines(
         self,
         symbol: str,
@@ -754,88 +809,86 @@ class KucoinFutures(KucoinRest):
         start_time: int | None = None,
         end_time: int | None = None,
     ) -> list[Kline]:
+        """Return recent futures candles through the paginated SDK interface."""
         interval_enum = KucoinKlineIntervals(interval)
         is_five_minute_interval = interval_enum == KucoinKlineIntervals.FIVE_MINUTES
         if limit is None:
             limit = 800 if is_five_minute_interval else 500
-        if not is_five_minute_interval:
-            return self.get_klines(
-                symbol=symbol,
-                interval=interval,
-                limit=limit,
-                start_time=start_time,
-                end_time=end_time,
-            )
-        interval_minutes = interval_enum.to_minutes()
-        interval_ms = interval_minutes * 60 * 1000
+        if limit < 1:
+            raise ValueError("limit must be greater than 0")
+
+        interval_ms = interval_enum.to_minutes() * 60 * 1000
 
         if end_time is None:
             now_ms = int(time() * 1000)
             end_time = now_ms - (now_ms % interval_ms)
 
         if start_time is None:
-            window_multiplier = (
-                3
-                if interval_minutes == KucoinKlineIntervals.FIVE_MINUTES.to_minutes()
-                else 1
-            )
-            start_time = int(end_time) - (limit * window_multiplier * interval_ms)
+            window_multiplier = 3 if is_five_minute_interval else 1
+            start_time = end_time - limit * window_multiplier * interval_ms
 
-        try:
-            params: dict[str, str | int] = {
-                "type": interval,
-                "begin": int(start_time) // 1000,
-                "end": int(end_time) // 1000,
-                "symbol": symbol,
-            }
-            response = request(
-                method="GET",
-                url="https://www.kucoin.com/_api_kumex/kumex-kline/v3/kline/history",
-                params=params,
-                timeout=15,
-            )
-            if response.status_code == 429:
+        if is_five_minute_interval:
+            try:
+                params: dict[str, str | int] = {
+                    "type": interval,
+                    "begin": start_time // 1000,
+                    "end": end_time // 1000,
+                    "symbol": symbol,
+                }
+                response = request(
+                    method="GET",
+                    url="https://www.kucoin.com/_api_kumex/kumex-kline/v3/kline/history",
+                    params=params,
+                    timeout=15,
+                )
+                if response.status_code == 429:
+                    logging.warning(
+                        "KuCoin dashboard klines rate limit hit (429) for %s %s",
+                        symbol,
+                        interval,
+                    )
+                    raise HTTPError(response=response)
+                if response.status_code >= 400:
+                    raise HTTPError(response=response)
+
+                content = response.json()
+                if content["code"] != "200":
+                    raise ValueError(
+                        "Unexpected KuCoin dashboard response code: "
+                        f"{content.get('code')}"
+                    )
+
+                dashboard_rows: list[Kline] = []
+                for kline in content["data"]:
+                    open_time_ms = int(kline[0]) * 1000
+                    dashboard_rows.append(
+                        [
+                            open_time_ms,
+                            float(kline[1]),
+                            float(kline[2]),
+                            float(kline[3]),
+                            float(kline[4]),
+                            float(kline[5]),
+                            open_time_ms + interval_ms - 1,
+                        ]
+                    )
+                dashboard_rows.sort(key=lambda row: row[0])
+                return dashboard_rows[-limit:]
+            except Exception:
                 logging.warning(
-                    "KuCoin dashboard klines rate limit hit (429) for %s %s — backing off 5 s",
+                    "KuCoin dashboard klines unavailable for %s %s; using SDK",
                     symbol,
                     interval,
-                )
-                raise HTTPError(response=response)
-            if response.status_code >= 400:
-                raise HTTPError(response=response)
-
-            content = response.json()
-            if content["code"] != "200":
-                raise ValueError(
-                    f"Unexpected KuCoin dashboard response code: {content.get('code')}"
+                    exc_info=True,
                 )
 
-            klines: list[Kline] = []
-            for kline in content["data"]:
-                open_time_ms = int(kline[0]) * 1000
-                close_time_ms = open_time_ms + interval_ms - 1
-                klines.append(
-                    [
-                        open_time_ms,
-                        float(kline[1]),
-                        float(kline[2]),
-                        float(kline[3]),
-                        float(kline[4]),
-                        float(kline[5]),
-                        close_time_ms,
-                    ]
-                )
-
-            klines.sort(key=lambda x: x[0])
-            return klines
-        except Exception:
-            return self.get_klines(
-                symbol=symbol,
-                interval=interval,
-                limit=limit,
-                start_time=start_time,
-                end_time=end_time,
-            )
+        rows = self.get_historical_klines(
+            symbol=symbol,
+            interval=interval,
+            start_time=start_time,
+            end_time=end_time,
+        )
+        return rows[-limit:]
 
     def set_futures_leverage(
         self, symbol: str, leverage: int

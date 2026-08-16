@@ -21,6 +21,7 @@ class _SymbolModel(BaseModel):
     active: bool = True
     blacklist_reason: str = ""
     description: str = ""
+    asset_class: str = Field(default="", max_length=32)
     quote_asset: str = ""
     base_asset: str = ""
     cooldown: int = 0
@@ -554,6 +555,45 @@ class TestEditSymbol:
             "symbol": "BTCUSDTM",
             "exchange_id": "kucoin",
         }
+
+    def test_forwards_asset_class_and_allows_clearing_it(self) -> None:
+        api_class = load_binbot_api_class()
+        api = object.__new__(api_class)
+        api.bb_one_symbol_url = "https://example.com/symbol"
+
+        captured: list[dict] = []
+
+        def fake_request(**kwargs):
+            captured.append(kwargs["json"])
+            return {"data": kwargs["json"]}
+
+        api.request = fake_request
+
+        classified = api.edit_symbol(
+            "BTCUSDTM",
+            ExchangeId.KUCOIN,
+            asset_class="persistent_uptrend",
+        )
+        cleared = api.edit_symbol(
+            "BTCUSDTM",
+            ExchangeId.KUCOIN,
+            asset_class="",
+        )
+
+        assert classified.asset_class == "persistent_uptrend"
+        assert cleared.asset_class == ""
+        assert captured == [
+            {
+                "asset_class": "persistent_uptrend",
+                "symbol": "BTCUSDTM",
+                "exchange_id": "kucoin",
+            },
+            {
+                "asset_class": "",
+                "symbol": "BTCUSDTM",
+                "exchange_id": "kucoin",
+            },
+        ]
 
     def test_validates_symbol_model_fields(self) -> None:
         api_class = load_binbot_api_class()
