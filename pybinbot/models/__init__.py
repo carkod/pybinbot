@@ -37,6 +37,9 @@ from pybinbot.models.grid_ladder import (
     GridSignalKind,
 )
 from pybinbot.models.routes import (
+    GainerLoserEntry,
+    GainersLosersSeriesResponse,
+    GainersLosersSnapshot,
     MarketBreadthSeries,
     MarketBreadthSeriesResponse,
     StandardResponse,
@@ -100,6 +103,9 @@ __all__ = [
     "GridOrderRecord",
     "GridOrderRole",
     "GridSignalKind",
+    "GainerLoserEntry",
+    "GainersLosersSeriesResponse",
+    "GainersLosersSnapshot",
     "MarketBreadthSeries",
     "MarketBreadthSeriesResponse",
     "OrderModel",
