@@ -11,6 +11,8 @@ from pybinbot import (
     BulkDeleteRequest,
     ExchangeId,
     ErrorsRequestBody,
+    GainersLosersSeriesResponse,
+    GainersLosersSnapshot,
     GridCalculation,
     GridDeploymentRequest,
     GridLadderRecord,
@@ -74,6 +76,9 @@ class BinbotApi:
         self.bb_top_losers = f"{bb_base_url}/charts/top-losers"
         self.bb_timeseries_url = f"{bb_base_url}/charts/timeseries"
         self.bb_market_breadth_url = f"{bb_base_url}/charts/market-breadth"
+        self.bb_gainers_losers_series_url = (
+            f"{bb_base_url}/charts/gainers-losers-series"
+        )
         self.bb_signals_url = f"{bb_base_url}/signals"
         self.bb_grid_ladders_url = f"{bb_base_url}/grid-ladders"
         self.bb_grid_ladder_calculate_url = f"{bb_base_url}/grid-ladders/calculate"
@@ -296,6 +301,19 @@ class BinbotApi:
         if response.get("data") is None:
             return None
         return MarketBreadthSeriesResponse.model_validate(response).data
+
+    async def get_gainers_losers_series(
+        self, limit: int = 200
+    ) -> list[GainersLosersSnapshot]:
+        """
+        Get the stored top-gainers/top-losers snapshots, newest first.
+        """
+        response = await self.fetch(
+            url=self.bb_gainers_losers_series_url, params={"limit": limit}
+        )
+        if response.get("data") is None:
+            return []
+        return GainersLosersSeriesResponse.model_validate(response).data
 
     async def create_signal(
         self,

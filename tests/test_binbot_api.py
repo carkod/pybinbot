@@ -101,6 +101,24 @@ class _MarketBreadthSeriesResponse(BaseModel):
     data: _MarketBreadthSeries
 
 
+class _GainerLoserEntry(BaseModel):
+    symbol: str
+    price_change_percent: float
+
+
+class _GainersLosersSnapshot(BaseModel):
+    source: str
+    recorded_at: str
+    top_gainers: list[_GainerLoserEntry]
+    top_losers: list[_GainerLoserEntry]
+
+
+class _GainersLosersSeriesResponse(BaseModel):
+    message: str
+    error: int = 0
+    data: list[_GainersLosersSnapshot]
+
+
 class _AutotradeSettingsSchema(BaseModel):
     fiat: str = "USDC"
 
@@ -150,6 +168,8 @@ def load_binbot_api_class():
     pybinbot_stub.GridLadderRecord = _GridLadderRecord
     pybinbot_stub.MarketBreadthSeries = _MarketBreadthSeries
     pybinbot_stub.MarketBreadthSeriesResponse = _MarketBreadthSeriesResponse
+    pybinbot_stub.GainersLosersSnapshot = _GainersLosersSnapshot
+    pybinbot_stub.GainersLosersSeriesResponse = _GainersLosersSeriesResponse
     pybinbot_stub.SignalCreate = SignalCreate
     pybinbot_stub.SignalModel = SignalModel
     pybinbot_stub.SignalResponse = SignalResponse
@@ -315,6 +335,73 @@ class TestMarketBreadth:
         api.fetch = fake_fetch
 
         assert asyncio.run(api.get_market_breadth()) is None
+
+
+class TestGainersLosersSeries:
+    URL = "https://example.com/charts/gainers-losers-series"
+
+    def test_get_gainers_losers_series_validates_and_returns_snapshots(self) -> None:
+        api_class = load_binbot_api_class()
+        api = object.__new__(api_class)
+        api.bb_gainers_losers_series_url = self.URL
+
+        async def fake_fetch(**kwargs):
+            assert kwargs == {
+                "url": self.URL,
+                "params": {"limit": 2},
+            }
+            return {
+                "message": "Successfully retrieved gainers and losers series.",
+                "error": 0,
+                "data": [
+                    {
+                        "source": "kucoin_futures",
+                        "recorded_at": "2026-08-26T11:11:34.771019+01:00",
+                        "top_gainers": [
+                            {"symbol": "BTRUSDTM", "price_change_percent": 181.88}
+                        ],
+                        "top_losers": [
+                            {"symbol": "VELVETUSDTM", "price_change_percent": -20.99}
+                        ],
+                    },
+                    {
+                        "source": "kucoin_futures",
+                        "recorded_at": "2026-08-26T10:11:34.819660+01:00",
+                        "top_gainers": [
+                            {"symbol": "BTRUSDTM", "price_change_percent": 177.02}
+                        ],
+                        "top_losers": [
+                            {"symbol": "VELVETUSDTM", "price_change_percent": -19.18}
+                        ],
+                    },
+                ],
+            }
+
+        api.fetch = fake_fetch
+
+        result = asyncio.run(api.get_gainers_losers_series(limit=2))
+
+        assert len(result) == 2
+        assert isinstance(result[0], _GainersLosersSnapshot)
+        assert result[0].top_gainers[0].symbol == "BTRUSDTM"
+        assert result[0].top_gainers[0].price_change_percent == 181.88
+        assert result[1].top_losers[0].symbol == "VELVETUSDTM"
+
+    def test_get_gainers_losers_series_returns_empty_list_for_null_data(self) -> None:
+        api_class = load_binbot_api_class()
+        api = object.__new__(api_class)
+        api.bb_gainers_losers_series_url = self.URL
+
+        async def fake_fetch(**kwargs):
+            return {
+                "message": "No gainers and losers data found.",
+                "error": 0,
+                "data": None,
+            }
+
+        api.fetch = fake_fetch
+
+        assert asyncio.run(api.get_gainers_losers_series()) == []
 
 
 class TestBotRouteResponses:
