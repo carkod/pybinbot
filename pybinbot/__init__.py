@@ -113,6 +113,9 @@ from pybinbot.models.signals import (
 )
 from pybinbot.models.symbol import SymbolModel
 from pybinbot.models.routes import (
+    GainerLoserEntry,
+    GainersLosersSeriesResponse,
+    GainersLosersSnapshot,
     MarketBreadthSeries,
     MarketBreadthSeriesResponse,
     StandardResponse,
@@ -196,6 +199,9 @@ __all__ = [
     "GetBotParams",
     "SymbolModel",
     "StandardResponse",
+    "GainerLoserEntry",
+    "GainersLosersSeriesResponse",
+    "GainersLosersSnapshot",
     "MarketBreadthSeries",
     "MarketBreadthSeriesResponse",
     "AutotradeSettings",
