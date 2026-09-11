@@ -95,7 +95,7 @@ class DealModel(BaseModel):
     )
     current_position_qty: Amount = Field(
         default=0,
-        gt=-1,
+        ge=0,
         description=(
             "Remaining open position quantity reported by the exchange. Unlike "
             "opening_qty, this can shrink after partial exits or ADL and becomes "
