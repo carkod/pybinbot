@@ -616,7 +616,7 @@ class KucoinFutures(KucoinRest):
         self.check_rate_limit(
             book.common_response.rate_limit.remaining, "get_stop_order_list"
         )
-        return book.items
+        return book.items or []
 
     def cancel_all_futures_orders(self, symbol: str) -> list[str]:
         """Cancel all open futures orders, optionally filtered by symbol.

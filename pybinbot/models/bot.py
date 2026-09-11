@@ -76,7 +76,7 @@ class BotModel(BotBase):
                 isinstance(deal_payload, dict)
                 and "current_position_qty" not in deal_payload
             ):
-                status = getattr(values.get("status"), "value", values.get("status"))
+                status = values.get("status")
                 deal_payload["current_position_qty"] = (
                     deal_payload.get("opening_qty", 0)
                     if status in {"active", "pending"}
@@ -147,11 +147,7 @@ class BotModel(BotBase):
         if not deal_payload.get("base_order_size"):
             deal_payload["base_order_size"] = 0
         if "current_position_qty" not in deal_payload:
-            status = getattr(
-                bot_payload.get("status"),
-                "value",
-                bot_payload.get("status"),
-            )
+            status = bot_payload.get("status")
             deal_payload["current_position_qty"] = (
                 deal_payload.get("opening_qty", 0)
                 if status in {"active", "pending"}
