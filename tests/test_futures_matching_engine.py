@@ -129,8 +129,27 @@ def test_buy_entry_limit_uses_gtc_without_matching_engine_or_market_fallback():
         order_type=OrderType.limit,
         reduce_only=False,
         time_in_force=AddOrderReq.TimeInForceEnum.GOOD_TILL_CANCELED,
+        post_only=False,
         allow_market_fallback=False,
     )
+
+
+def test_buy_post_only_entry_sets_kucoin_post_only_flag():
+    f = _make_futures()
+    f.set_futures_margin_mode = MagicMock()
+    f.futures_order_api = MagicMock()
+    f.futures_order_api.add_order.return_value = None
+
+    with pytest.raises(RuntimeError, match="market fallback is disabled"):
+        f.buy(
+            "KATUSDTM",
+            qty=150,
+            entry_limit_price=0.00625,
+            post_only=True,
+        )
+
+    request = f.futures_order_api.add_order.call_args.args[0]
+    assert request.post_only is True
 
 
 def test_sell_entry_limit_uses_gtc_without_matching_engine_or_market_fallback():
