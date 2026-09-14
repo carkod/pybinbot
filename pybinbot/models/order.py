@@ -89,7 +89,17 @@ class DealModel(BaseModel):
     opening_qty: Amount = Field(
         default=0,
         description=(
-            "replaces previous buy_total_qty or short_sell_qty/margin_short_sell_qty"
+            "Historical quantity filled by the opening order. Unlike "
+            "current_position_qty, this does not shrink after partial exits or ADL."
+        ),
+    )
+    current_position_qty: Amount = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Remaining open position quantity reported by the exchange. Unlike "
+            "opening_qty, this can shrink after partial exits or ADL and becomes "
+            "zero when the position is flat."
         ),
     )
     opening_timestamp: int = Field(default=0)

@@ -70,6 +70,18 @@ class BotModel(BotBase):
                 values["position"] = values.pop("strategy")
             if values.get("position") == "margin_short":
                 values["position"] = "short"
+
+            deal_payload = values.get("deal")
+            if (
+                isinstance(deal_payload, dict)
+                and "current_position_qty" not in deal_payload
+            ):
+                status = values.get("status")
+                deal_payload["current_position_qty"] = (
+                    deal_payload.get("opening_qty", 0)
+                    if status in {"active", "pending"}
+                    else 0
+                )
         return values
 
     model_config = {
@@ -134,6 +146,13 @@ class BotModel(BotBase):
         deal_payload = cls._dump_value(deal_source)
         if not deal_payload.get("base_order_size"):
             deal_payload["base_order_size"] = 0
+        if "current_position_qty" not in deal_payload:
+            status = bot_payload.get("status")
+            deal_payload["current_position_qty"] = (
+                deal_payload.get("opening_qty", 0)
+                if status in {"active", "pending"}
+                else 0
+            )
         model.deal = DealModel.model_validate(deal_payload)
         order_source = (
             bot_payload.get("orders", [])
