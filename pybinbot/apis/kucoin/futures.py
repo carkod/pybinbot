@@ -434,6 +434,7 @@ class KucoinFutures(KucoinRest):
         reduce_only: bool = False,
         reference_price: float | None = None,
         entry_limit_price: float | None = None,
+        post_only: bool = False,
     ) -> OrderBase:
         """Place a futures BUY order.
 
@@ -442,7 +443,7 @@ class KucoinFutures(KucoinRest):
         price to guarantee the position is always closed without chasing a wick.
 
         When ``entry_limit_price`` is provided the order is a GTC entry limit
-        with no market fallback.
+        with no market fallback. Set ``post_only`` to require maker execution.
 
         Without ``reference_price`` the legacy path is used: a single GTC limit
         priced by the 1-tick crossing engine (used for base-order entries).
@@ -474,6 +475,7 @@ class KucoinFutures(KucoinRest):
                 order_type=OrderType.limit,
                 reduce_only=reduce_only,
                 time_in_force=AddOrderReq.TimeInForceEnum.GOOD_TILL_CANCELED,
+                post_only=post_only,
                 allow_market_fallback=False,
             )
 
@@ -893,6 +895,7 @@ class KucoinFutures(KucoinRest):
         stop_price: float | None = None,
         stop_price_type: AddOrderReq.StopPriceTypeEnum | None = None,
         time_in_force: AddOrderReq.TimeInForceEnum | None = None,
+        post_only: bool = False,
         allow_market_fallback: bool = True,
     ) -> OrderBase:
         """Place a Kucoin futures order using the official SDK.
@@ -912,6 +915,7 @@ class KucoinFutures(KucoinRest):
             stop_price: Optional stop trigger price. Required when stop is set.
             stop_price_type: Optional stop price type (TP/MP/IP). Required when
                 stop is set.
+            post_only: Whether a limit order must rest as maker liquidity.
             allow_market_fallback: Whether a rejected order submission may retry
                 as a market order.
         """
@@ -954,6 +958,11 @@ class KucoinFutures(KucoinRest):
         if time_in_force is not None:
             builder = builder.set_time_in_force(time_in_force)
 
+        if post_only:
+            if order_type != OrderType.limit:
+                raise ValueError("post_only is only valid for limit orders")
+            builder = builder.set_post_only(True)
+
         # Optional stop-loss / take-profit trigger parameters
         if stop is not None:
             if stop_price is None or stop_price_type is None:
@@ -981,6 +990,7 @@ class KucoinFutures(KucoinRest):
                 reduce_only=reduce_only,
                 close_order=close_order,
                 margin_mode=None,
+                post_only=False,
                 allow_market_fallback=False,
             )
 
