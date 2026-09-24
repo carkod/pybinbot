@@ -7,6 +7,7 @@ models, while still allowing access to the structured subpackages via
 
 from pybinbot.shared.maths import (
     coerce_number,
+    ema,
     format_ts,
     interval_to_millisecs,
     round_numbers,
@@ -49,6 +50,7 @@ from pybinbot.shared.enums import (
     AutotradeSettingsDocument,
 )
 from pybinbot.shared.indicators import Indicators
+from pybinbot.shared.breadth import breadth_momentum_reversal, btc_trend_confirms
 from pybinbot.shared.candles import Candles
 from pybinbot.shared.heikin_ashi import HeikinAshi
 from pybinbot.shared.logging_config import configure_logging
@@ -242,6 +244,7 @@ __all__ = [
     "convert_from_kucoin_symbol",
     # maths helpers
     "coerce_number",
+    "ema",
     "supress_trailing",
     "round_numbers",
     "round_numbers_ceiling",
@@ -261,6 +264,8 @@ __all__ = [
     "timestamp_to_datetime",
     # dataframes
     "Indicators",
+    "breadth_momentum_reversal",
+    "btc_trend_confirms",
     "Candles",
     "HeikinAshi",
     # enums

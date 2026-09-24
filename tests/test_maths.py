@@ -1,3 +1,5 @@
+import pytest
+
 from pybinbot.shared import maths
 
 
@@ -14,6 +16,19 @@ def test_coerce_number_is_exported_from_top_level_package():
     from pybinbot import coerce_number
 
     assert coerce_number("3.14") == 3.14
+
+
+def test_ema():
+    assert maths.ema([1.0], 3) == [1.0]
+    values = maths.ema([1.0, 2.0, 3.0, 4.0], 3)
+    assert values[0] == 1.0
+    assert values[-1] == pytest.approx(3.125)
+
+
+def test_ema_is_exported_from_top_level_package():
+    from pybinbot import ema
+
+    assert ema([1.0, 2.0], 3) == pytest.approx([1.0, 1.5])
 
 
 def test_ensure_float():

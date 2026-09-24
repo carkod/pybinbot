@@ -15,6 +15,15 @@ def coerce_number(value: Any) -> float | None:
     return parsed
 
 
+def ema(values: list[float], span: int) -> list[float]:
+    """Exponential moving average, seeded with the series' first value."""
+    alpha = 2 / (span + 1)
+    ema_values = [values[0]]
+    for value in values[1:]:
+        ema_values.append(alpha * value + (1 - alpha) * ema_values[-1])
+    return ema_values
+
+
 def ensure_float(value: str | int | float) -> float:
     if isinstance(value, str) or isinstance(value, int):
         return float(value)
