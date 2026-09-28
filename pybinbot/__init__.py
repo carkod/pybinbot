@@ -51,6 +51,7 @@ from pybinbot.shared.enums import (
 )
 from pybinbot.shared.indicators import Indicators
 from pybinbot.shared.breadth import breadth_momentum_reversal, btc_trend_confirms
+from pybinbot.shared.beta import latest_beta, rolling_beta
 from pybinbot.shared.candles import Candles
 from pybinbot.shared.heikin_ashi import HeikinAshi
 from pybinbot.shared.logging_config import configure_logging
@@ -266,6 +267,8 @@ __all__ = [
     "Indicators",
     "breadth_momentum_reversal",
     "btc_trend_confirms",
+    "rolling_beta",
+    "latest_beta",
     "Candles",
     "HeikinAshi",
     # enums
