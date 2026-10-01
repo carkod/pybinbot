@@ -21,15 +21,27 @@ def rolling_beta(token_close: Series, btc_close: Series, *, window: int) -> Seri
     default here - shorter windows (a day of hourly bars, for instance)
     produce an unstable estimate.
 
-    Returns a Series aligned to the token/BTC's shared index (inner-joined
-    on the two return series, NaN rows dropped first). Values before
-    `window` aligned observations have accumulated are NaN - callers must
-    not treat a NaN beta as a beta of 0, which would misread as "no BTC
-    sensitivity" instead of "not enough history yet".
+    Returns a Series aligned to the token/BTC's shared index. The two close
+    price series are inner-joined *before* returns are computed (a missing
+    timestamp on either side drops that row from both), so every return in
+    the resulting frame spans the same pair of timestamps for token and
+    BTC alike - computing each return independently first and joining
+    afterwards can silently pair a token return against a BTC return over
+    a different horizon whenever one series is missing a timestamp the
+    other has. `fill_method=None` disables pandas' pct_change forward-fill
+    (deprecated but still the pandas 2.2 default): an internal gap must
+    produce a NaN return to be dropped, not a synthetic zero computed
+    against a stale, forward-filled price.
+
+    Values before `window` aligned observations have accumulated are NaN -
+    callers must not treat a NaN beta as a beta of 0, which would misread
+    as "no BTC sensitivity" instead of "not enough history yet".
     """
-    returns = DataFrame(
-        {"token": token_close.pct_change(), "btc": btc_close.pct_change()}
-    ).dropna()
+    prices = DataFrame({"token": token_close, "btc": btc_close}).dropna()
+    if prices.empty:
+        return Series(dtype=float)
+
+    returns = prices.pct_change(fill_method=None).dropna()
     if returns.empty:
         return Series(dtype=float)
 
