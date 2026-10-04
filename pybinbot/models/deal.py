@@ -3,8 +3,21 @@ from pydantic import BaseModel, Field, field_validator
 from pybinbot.shared.types import Amount
 
 
+class PositionSizeOrder(BaseModel):
+    client_oid: str
+    reducing: bool
+    quantity_before: float = Field(gt=0)
+    entry_price_before: float = Field(gt=0)
+    requested_qty: float = Field(gt=0)
+    signal_price: float = Field(gt=0)
+
+
 class DealBase(BaseModel):
     """Operational deal data model with numeric fields."""
+
+    position_size_pct: float = Field(default=25, gt=0, le=100)
+    position_size_reference_price: float = Field(default=0, ge=0)
+    position_size_order: PositionSizeOrder | None = None
 
     base_order_size: Amount = Field(
         default=0, gt=-1, description="For Futures, this is the number of contracts"

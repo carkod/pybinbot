@@ -6,6 +6,36 @@ from pybinbot.models.deal import DealBase
 from pybinbot.models.order import DealModel
 
 
+@pytest.mark.parametrize("deal_model", [DealBase, DealModel])
+def test_position_size_percentage_has_validated_default(deal_model):
+    assert deal_model().position_size_pct == 25
+    for invalid in (0, -1, 101):
+        with pytest.raises(ValidationError):
+            deal_model(position_size_pct=invalid)
+
+
+def test_dynamic_sizing_requires_futures_thresholds_and_trailing_fallback():
+    assert BotModel(pair="BTCUSDT").dynamic_position_sizing is False
+    parameters = dict(
+        pair="XBTUSDTM",
+        market_type="FUTURES",
+        dynamic_position_sizing=True,
+        stop_loss=5,
+        take_profit=10,
+        trailing_profit=5,
+        trailing_deviation=2,
+    )
+    assert BotModel(**parameters).dynamic_position_sizing is True
+    for field, invalid in (
+        ("market_type", "SPOT"),
+        ("stop_loss", 0),
+        ("take_profit", 0),
+        ("trailing_deviation", 0),
+    ):
+        with pytest.raises(ValidationError):
+            BotModel(**(parameters | {field: invalid}))
+
+
 def test_current_position_quantity_is_distinct_from_opening_quantity() -> None:
     deal = DealBase(opening_qty=4522, current_position_qty=922)
 
