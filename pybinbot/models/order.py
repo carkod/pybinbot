@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from pybinbot.shared.enums import DealType, OrderStatus
 from pybinbot.shared.types import Amount
+from pybinbot.models.deal import PositionSizeOrder
 
 
 class OrderBase(BaseModel):
@@ -55,6 +56,10 @@ class OrderBase(BaseModel):
 
 
 class DealModel(BaseModel):
+    position_size_pct: float = Field(default=25, gt=0, le=100)
+    position_size_reference_price: float = Field(default=0, ge=0)
+    position_size_order: PositionSizeOrder | None = None
+
     base_order_size: Amount = Field(default=0, gt=-1)
     current_price: Amount = Field(default=0)
     take_profit_price: Amount = Field(default=0)
