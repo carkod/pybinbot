@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from pybinbot.shared.enums import (
     BinanceKlineIntervals,
@@ -41,6 +41,7 @@ class BotBase(BaseModel):
     created_at: float = Field(default_factory=timestamp)
     updated_at: float = Field(default_factory=timestamp)
     dynamic_trailing: bool = Field(default=False)
+    dynamic_position_sizing: bool = Field(default=False)
     logs: list = Field(default=[])
     mode: str = Field(default="manual")
     market_type: MarketType = Field(default=MarketType.SPOT)
@@ -101,6 +102,21 @@ class BotBase(BaseModel):
             ],
         },
     }
+
+    @model_validator(mode="after")
+    def validate_dynamic_position_sizing(self):
+        if self.dynamic_position_sizing:
+            if self.market_type != MarketType.FUTURES:
+                raise ValueError("Dynamic position sizing requires futures")
+            if not 0 < self.stop_loss < 100 or self.take_profit <= 0:
+                raise ValueError(
+                    "Dynamic sizing requires 0 < stop_loss < 100 and take_profit > 0"
+                )
+            if self.trailing_profit <= 0 or not 0 < self.trailing_deviation < 100:
+                raise ValueError(
+                    "Dynamic sizing requires trailing_profit and trailing_deviation for fallback"
+                )
+        return self
 
     @field_validator("pair")
     @classmethod

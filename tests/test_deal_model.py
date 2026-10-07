@@ -2,8 +2,56 @@ import pytest
 from pydantic import ValidationError
 
 from pybinbot.models.bot import BotModel
-from pybinbot.models.deal import DealBase
+from pybinbot.models.deal import DealBase, PositionSizeOrder
 from pybinbot.models.order import DealModel
+
+
+def test_legacy_sizing_intent_defaults_to_uncertain_submission():
+    pending = PositionSizeOrder(
+        client_oid="legacy",
+        reducing=True,
+        quantity_before=100,
+        entry_price_before=100,
+        requested_qty=25,
+        signal_price=95,
+    )
+    assert pending.submission_phase == "submitting"
+    assert pending.not_found_count == 0
+    assert pending.not_found_since_ms == 0
+    pending.not_found_count = 2
+    pending.not_found_since_ms = 100_000
+    deal = DealBase(position_size_order=pending)
+    assert DealBase.model_validate(deal.model_dump()).position_size_order == pending
+
+
+@pytest.mark.parametrize("deal_model", [DealBase, DealModel])
+def test_position_size_percentage_has_validated_default(deal_model):
+    assert deal_model().position_size_pct == 25
+    for invalid in (0, -1, 101):
+        with pytest.raises(ValidationError):
+            deal_model(position_size_pct=invalid)
+
+
+def test_dynamic_sizing_requires_futures_thresholds_and_trailing_fallback():
+    assert BotModel(pair="BTCUSDT").dynamic_position_sizing is False
+    parameters = dict(
+        pair="XBTUSDTM",
+        market_type="FUTURES",
+        dynamic_position_sizing=True,
+        stop_loss=5,
+        take_profit=10,
+        trailing_profit=5,
+        trailing_deviation=2,
+    )
+    assert BotModel(**parameters).dynamic_position_sizing is True
+    for field, invalid in (
+        ("market_type", "SPOT"),
+        ("stop_loss", 0),
+        ("take_profit", 0),
+        ("trailing_deviation", 0),
+    ):
+        with pytest.raises(ValidationError):
+            BotModel(**(parameters | {field: invalid}))
 
 
 def test_current_position_quantity_is_distinct_from_opening_quantity() -> None:
