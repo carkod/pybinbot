@@ -83,7 +83,6 @@ from pybinbot.models.autotrade_settings import (
     AutotradeSettings,
     AutotradeSettingsResponse,
     AutotradeSettingsSchema,
-    TestAutotradeSettingsSchema,
 )
 from pybinbot.models.grid_ladder import (
     GridCalculation,
@@ -230,7 +229,6 @@ __all__ = [
     "SignalModel",
     "SignalResponse",
     "SignalsConsumer",
-    "TestAutotradeSettingsSchema",
     "KlineProduceModel",
     "KlineSchema",
     # misc

@@ -54,8 +54,4 @@ class AutotradeSettingsResponse(StandardResponse):
     data: AutotradeSettingsSchema
 
 
-class TestAutotradeSettingsSchema(AutotradeSettingsSchema):
-    id: AutotradeSettingsDocument = AutotradeSettingsDocument.test_autotrade_settings
-
-
 AutotradeSettings = AutotradeSettingsSchema

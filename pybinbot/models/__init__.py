@@ -2,7 +2,6 @@ from pybinbot.models.autotrade_settings import (
     AutotradeSettings,
     AutotradeSettingsResponse,
     AutotradeSettingsSchema,
-    TestAutotradeSettingsSchema,
 )
 from pybinbot.models.bot_base import BotBase, RecoveryParams
 from pybinbot.models.symbol import SymbolModel
@@ -118,5 +117,4 @@ __all__ = [
     "SignalResponse",
     "SymbolModel",
     "StandardResponse",
-    "TestAutotradeSettingsSchema",
 ]
