@@ -1,6 +1,6 @@
-import random
 import uuid
 from time import time
+
 from pybinbot.apis.kucoin.market import KucoinMarket
 from kucoin_universal_sdk.generate.spot.order.model_add_order_sync_resp import (
     AddOrderSyncResp,
@@ -97,63 +97,10 @@ class KucoinOrders(KucoinMarket):
         response = self.spot_api.get_full_order_book(request)
         return response
 
-    def simulate_order(
-        self,
-        symbol: str,
-        side: AddOrderSyncReq.SideEnum,
-        order_type: AddOrderSyncReq.TypeEnum = AddOrderSyncReq.TypeEnum.LIMIT,
-        qty: float = 1,
-    ) -> GetOrderByOrderIdResp:
-        """
-        Fake synchronous order response shaped similarly to add_order_sync.
-        Returns a dict echoing inputs and a computed price when missing.
-        """
-        book_price = self.simple_matching_engine(
-            symbol, order_side=(side == AddOrderSyncReq.SideEnum.SELL)
-        )
-        # fake data
-        ts = int(time() * 1000)
-        order_id = str(random.randint(1000000000, 9999999999))
-
-        order = GetOrderByOrderIdResp.model_validate(
-            {
-                "id": order_id,
-                "symbol": symbol,
-                "op_type": "DEAL",
-                "type": order_type.value,
-                "side": side.value.lower(),
-                "price": str(book_price),
-                "size": str(qty),
-                "funds": str(float(book_price) * qty),
-                "deal_funds": str(float(book_price) * qty),
-                "deal_size": str(qty),
-                "fee": "0",
-                "fee_currency": symbol.split("-")[1],
-                "stp": "CN",
-                "stop": "",
-                "stop_price": "0",
-                "time_in_force": AddOrderSyncReq.TimeInForceEnum.GTC.value,
-                "post_only": False,
-                "hidden": False,
-                "iceberg": False,
-                "visible_size": "0",
-                "cancel_after": 0,
-                "channel": "API",
-                "client_oid": "",
-                "remark": "",
-                "tags": "",
-                "is_active": False,
-                "cancel_exist": False,
-                "created_at": ts,
-            }
-        )
-        return order
-
     def simple_matching_engine(self, symbol: str, order_side: bool) -> float:
         """
         Get top of book price for immediate buy/sell
-        this is good for paper trading
-        or initial price estimates
+        this is useful for initial price estimates
 
         @param: order_side -
             Buy order = get bid prices = False
@@ -576,55 +523,6 @@ class KucoinOrders(KucoinMarket):
     def get_margin_open_orders(self, symbol: str):
         req = GetOpenOrdersReqBuilder().set_symbol(symbol).build()
         return self.margin_order_api.get_open_orders(req)
-
-    def simulate_margin_order(
-        self,
-        symbol: str,
-        side: AddOrderReq.SideEnum,
-        order_type: AddOrderReq.TypeEnum = AddOrderReq.TypeEnum.LIMIT,
-        qty: float = 1,
-    ) -> GetOrderByOrderIdResp:
-        """
-        Fake isolated margin order response echoing inputs.
-        """
-        book_price = self.simple_matching_engine(
-            symbol, order_side=(side == AddOrderReq.SideEnum.SELL)
-        )
-        ts = int(time() * 1000)
-        order_id = str(random.randint(1000000000, 9999999999))
-        order = GetOrderByOrderIdResp.model_validate(
-            {
-                "id": order_id,
-                "symbol": symbol,
-                "op_type": "DEAL",
-                "type": order_type.value,
-                "side": side.value.lower(),
-                "price": str(book_price),
-                "size": str(qty),
-                "funds": str(float(book_price) * qty),
-                "deal_funds": str(float(book_price) * qty),
-                "deal_size": str(qty),
-                "fee": "0",
-                "fee_currency": symbol.split("-")[1],
-                "stp": "CN",
-                "stop": "",
-                "stop_price": "0",
-                "time_in_force": AddOrderSyncReq.TimeInForceEnum.GTC.value,
-                "post_only": False,
-                "hidden": False,
-                "iceberg": False,
-                "visible_size": "0",
-                "cancel_after": 0,
-                "channel": "API",
-                "client_oid": "",
-                "remark": "",
-                "tags": "",
-                "is_active": False,
-                "cancel_exist": False,
-                "created_at": ts,
-            }
-        )
-        return order
 
     def repay_margin_loan(
         self,
