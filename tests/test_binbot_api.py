@@ -123,10 +123,6 @@ class _AutotradeSettingsSchema(BaseModel):
     fiat: str = "USDC"
 
 
-class _TestAutotradeSettingsSchema(_AutotradeSettingsSchema):
-    pass
-
-
 class _BotModel(BaseModel):
     pair: str
 
@@ -158,7 +154,6 @@ def load_binbot_api_class():
     pybinbot_stub.Status = Status
     pybinbot_stub.SymbolModel = _SymbolModel
     pybinbot_stub.AutotradeSettingsSchema = _AutotradeSettingsSchema
-    pybinbot_stub.TestAutotradeSettingsSchema = _TestAutotradeSettingsSchema
     pybinbot_stub.BotModel = _BotModel
     pybinbot_stub.BotResponse = _BotResponse
     pybinbot_stub.ErrorsRequestBody = _ErrorsRequestBody
@@ -185,7 +180,6 @@ def load_binbot_api_class():
 
     autotrade_stub = types.ModuleType("pybinbot.models.autotrade_settings")
     autotrade_stub.AutotradeSettingsSchema = _AutotradeSettingsSchema
-    autotrade_stub.TestAutotradeSettingsSchema = _TestAutotradeSettingsSchema
 
     bot_stub = types.ModuleType("pybinbot.models.bot")
     bot_stub.BotModel = _BotModel
@@ -284,6 +278,27 @@ class TestSubmitBotEventLogs:
         assert captured["json"] == {
             "errors": ["failed to create bot", "failed to create deal"]
         }
+
+
+class TestRetiredCollections:
+    def test_retired_collection_never_falls_through_to_live_reads(self) -> None:
+        from unittest.mock import Mock
+
+        import pytest
+
+        api_class = load_binbot_api_class()
+        api = object.__new__(api_class)
+        api.request = Mock()
+        for request in (
+            lambda: api.get_active_pairs(collection_name="paper_trading"),
+            lambda: api.get_bots_by_name(
+                "algo", "BTCUSDT", collection_name="paper_trading"
+            ),
+            lambda: api.get_bots_by_status(None, None, collection_name="paper_trading"),
+        ):
+            with pytest.raises(ValueError, match="Only the bots collection"):
+                request()
+        api.request.assert_not_called()
 
 
 class TestMarketBreadth:
@@ -504,93 +519,6 @@ class TestBotRouteResponses:
         assert captured["url"] == "https://example.com/bot"
         assert captured["method"] == "DELETE"
         assert captured["json"] == {"ids": ["bot-1", "bot-2"]}
-
-    def test_create_paper_bot_validates_bot_response(self) -> None:
-        api_class = load_binbot_api_class()
-        api = object.__new__(api_class)
-        api.bb_test_bot_url = "https://example.com/paper-trading"
-
-        captured: dict = {}
-
-        def fake_request(**kwargs):
-            captured.update(kwargs)
-            return {"message": "Bot created", "data": {"id": "paper-bot-1"}}
-
-        api.request = fake_request
-
-        result = api.create_paper_bot({"pair": "BTCUSDTM"})
-
-        assert isinstance(result, _BotResponse)
-        assert result.message == "Bot created"
-        assert captured["url"] == "https://example.com/paper-trading"
-        assert captured["method"] == "POST"
-        assert captured["json"] == {"pair": "BTCUSDTM"}
-
-    def test_activate_paper_bot_validates_bot_response(self) -> None:
-        api_class = load_binbot_api_class()
-        api = object.__new__(api_class)
-        api.bb_activate_test_bot_url = "https://example.com/paper-trading/activate"
-        api.request = lambda **kwargs: {
-            "message": "Successfully activated bot!",
-            "data": {"id": "paper-bot-1"},
-        }
-
-        result = api.activate_paper_bot("paper-bot-1")
-
-        assert isinstance(result, _BotResponse)
-        assert result.message == "Successfully activated bot!"
-
-    def test_delete_paper_bot_sends_bulk_delete_json_and_validates_response(
-        self,
-    ) -> None:
-        api_class = load_binbot_api_class()
-        api = object.__new__(api_class)
-        api.bb_test_bot_url = "https://example.com/paper-trading"
-
-        captured: dict = {}
-
-        def fake_request(**kwargs):
-            captured.update(kwargs)
-            return {"message": "Successfully deleted bot!"}
-
-        api.request = fake_request
-
-        result = api.delete_paper_bot("paper-bot-1")
-
-        assert isinstance(result, _BotResponse)
-        assert result.message == "Successfully deleted bot!"
-        assert captured["url"] == "https://example.com/paper-trading"
-        assert captured["method"] == "DELETE"
-        assert captured["json"] == {"ids": ["paper-bot-1"]}
-
-    def test_submit_paper_trading_event_logs_validates_response(self) -> None:
-        api_class = load_binbot_api_class()
-        api = object.__new__(api_class)
-        api.bb_pt_submit_errors_url = "https://example.com/paper-trading/errors"
-
-        captured: dict = {}
-
-        def fake_request(**kwargs):
-            captured.update(kwargs)
-            return {
-                "message": "Errors posted successfully.",
-                "data": {"id": "paper-bot-1"},
-            }
-
-        api.request = fake_request
-
-        result = api.submit_paper_trading_event_logs(
-            "paper-bot-1",
-            ["waiting for fill"],
-        )
-
-        assert isinstance(result, _BotResponse)
-        assert result.message == "Errors posted successfully."
-        assert captured["url"] == (
-            "https://example.com/paper-trading/errors/paper-bot-1"
-        )
-        assert captured["method"] == "POST"
-        assert captured["json"] == {"errors": ["waiting for fill"]}
 
 
 class TestCalculateGridLevels:

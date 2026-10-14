@@ -23,7 +23,6 @@ from pybinbot import (
     SignalResponse,
     Status,
     SymbolModel,
-    TestAutotradeSettingsSchema,
     aio_response_handler,
     handle_binbot_errors,
 )
@@ -96,7 +95,6 @@ class BinbotApi:
         self.bb_stop_buy_order_url = f"{bb_base_url}/order/buy/stop-limit"
         self.bb_stop_sell_order_url = f"{bb_base_url}/order/sell/stop-limit"
         self.bb_submit_errors = f"{bb_base_url}/bot/errors"
-        self.bb_pt_submit_errors_url = f"{bb_base_url}/paper-trading/errors"
         self.bb_liquidation_url = f"{bb_base_url}/account/one-click-liquidation"
 
         # balances
@@ -115,16 +113,6 @@ class BinbotApi:
         self.bb_activate_bot_url = f"{bb_base_url}/bot/activate"
         self.bb_active_pairs = f"{bb_base_url}/bot/active-pairs"
         self.bb_deactivate_bot_url = f"{bb_base_url}/bot/deactivate"
-
-        # paper trading
-        self.bb_test_bot_url = f"{bb_base_url}/paper-trading"
-        self.bb_paper_trading_url = f"{bb_base_url}/paper-trading"
-        self.bb_activate_test_bot_url = f"{bb_base_url}/paper-trading/activate"
-        self.bb_paper_trading_activate_url = f"{bb_base_url}/paper-trading/activate"
-        self.bb_paper_trading_deactivate_url = f"{bb_base_url}/paper-trading/deactivate"
-        self.bb_test_bot_active_list = f"{bb_base_url}/paper-trading/active-list"
-        self.bb_test_autotrade_url = f"{bb_base_url}/autotrade-settings/paper-trading"
-        self.bb_test_active_pairs = f"{bb_base_url}/paper-trading/active-pairs"
 
         # service account login
         if not self.token:
@@ -428,10 +416,6 @@ class BinbotApi:
         )
         return data
 
-    def get_test_autotrade_settings(self) -> TestAutotradeSettingsSchema:
-        data = self.request(url=self.bb_test_autotrade_url)
-        return TestAutotradeSettingsSchema.model_validate(data["data"])
-
     def get_autotrade_settings(self) -> AutotradeSettingsSchema:
         data = self.request(url=self.bb_autotrade_settings_url)
         return AutotradeSettingsSchema.model_validate(data["data"])
@@ -439,9 +423,9 @@ class BinbotApi:
     def get_bots_by_name(
         self, name: str, symbol: str, collection_name="bots"
     ) -> list[BotModel]:
+        if collection_name != "bots":
+            raise ValueError("Only the bots collection is supported")
         url = self.bb_bot_url
-        if collection_name == "paper_trading":
-            url = self.bb_test_bot_url
 
         data = self.request(
             url=url,
@@ -456,9 +440,9 @@ class BinbotApi:
         collection_name="bots",
         status=Status.active,
     ) -> list[BotModel]:
+        if collection_name != "bots":
+            raise ValueError("Only the bots collection is supported")
         url = self.bb_bot_url
-        if collection_name == "paper_trading":
-            url = self.bb_test_bot_url
 
         status_value = status.value if isinstance(status, Status) else status
         data = self.request(
@@ -555,32 +539,13 @@ class BinbotApi:
         )
         return BotResponse.model_validate(data)
 
-    def create_paper_bot(self, data: dict) -> BotResponse:
-        response = self.request(url=self.bb_test_bot_url, method="POST", json=data)
-        return BotResponse.model_validate(response)
-
-    def activate_paper_bot(self, bot_id: str) -> BotResponse:
-        response = self.request(url=f"{self.bb_activate_test_bot_url}/{bot_id}")
-        return BotResponse.model_validate(response)
-
-    def delete_paper_bot(self, bot_id: str | list[str]) -> BotResponse:
-        bot_ids = [bot_id] if isinstance(bot_id, str) else bot_id
-        payload = BulkDeleteRequest(ids=bot_ids).model_dump(mode="json")
-
-        response = self.request(
-            url=self.bb_test_bot_url,
-            method="DELETE",
-            json=payload,
-        )
-        return BotResponse.model_validate(response)
-
     def get_active_pairs(self, collection_name="bots") -> list[str]:
         """
         Get distinct (non-repeating) bots by status active
         """
+        if collection_name != "bots":
+            raise ValueError("Only the bots collection is supported")
         url = self.bb_active_pairs
-        if collection_name == "paper_trading":
-            url = self.bb_test_active_pairs
 
         res = self.request(
             url=url,
@@ -612,19 +577,6 @@ class BinbotApi:
                     exclusion_list.append(s.id)
 
         return exclusion_list
-
-    def submit_paper_trading_event_logs(
-        self, bot_id: str, message: str | list[str]
-    ) -> BotResponse:
-        payload = ErrorsRequestBody(
-            errors=message if isinstance(message, str) else list(message)
-        ).model_dump(mode="json")
-        data = self.request(
-            url=f"{self.bb_pt_submit_errors_url}/{bot_id}",
-            method="POST",
-            json=payload,
-        )
-        return BotResponse.model_validate(data)
 
     def add_to_blacklist(self, symbol: str, reason: str | None = None) -> dict:
         payload = {"symbol": symbol, "reason": reason}
