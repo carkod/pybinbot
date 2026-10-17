@@ -435,6 +435,7 @@ class KucoinFutures(KucoinRest):
         reference_price: float | None = None,
         entry_limit_price: float | None = None,
         post_only: bool = False,
+        leverage: int | None = None,
     ) -> OrderBase:
         """Place a futures BUY order.
 
@@ -448,6 +449,7 @@ class KucoinFutures(KucoinRest):
         Without ``reference_price`` the legacy path is used: a single GTC limit
         priced by the 1-tick crossing engine (used for base-order entries).
         """
+        order_leverage = self.DEFAULT_LEVERAGE if leverage is None else leverage
         if reference_price is not None and entry_limit_price is not None:
             raise ValueError(
                 "reference_price and entry_limit_price are mutually exclusive"
@@ -458,7 +460,7 @@ class KucoinFutures(KucoinRest):
                 symbol=symbol,
                 side=AddOrderReq.SideEnum.BUY,
                 qty=qty,
-                leverage=int(self.DEFAULT_LEVERAGE),
+                leverage=order_leverage,
                 reference_price=reference_price,
                 reduce_only=reduce_only,
             )
@@ -471,7 +473,7 @@ class KucoinFutures(KucoinRest):
                 side=AddOrderReq.SideEnum.BUY,
                 size=int(qty),
                 price=entry_limit_price,
-                leverage=int(self.DEFAULT_LEVERAGE),
+                leverage=order_leverage,
                 order_type=OrderType.limit,
                 reduce_only=reduce_only,
                 time_in_force=AddOrderReq.TimeInForceEnum.GOOD_TILL_CANCELED,
@@ -486,7 +488,7 @@ class KucoinFutures(KucoinRest):
             side=AddOrderReq.SideEnum.BUY,
             size=int(qty),
             price=price,
-            leverage=int(self.DEFAULT_LEVERAGE),
+            leverage=order_leverage,
             order_type=OrderType.limit,
             reduce_only=reduce_only,
         )

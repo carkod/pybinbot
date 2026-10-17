@@ -29,6 +29,9 @@ class BotBase(BaseModel):
     fiat_order_size: Amount = Field(
         default=0, ge=0, description="Min Binance 0.0001 BNB approx 15USD"
     )
+    futures_leverage: int = Field(
+        default=1, ge=1, le=5, description="Leverage for this futures bot (1x–5x)"
+    )
     candlestick_interval: BinanceKlineIntervals = Field(
         default=BinanceKlineIntervals.fifteen_minutes
     )
