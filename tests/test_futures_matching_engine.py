@@ -106,7 +106,8 @@ def test_legacy_path_sell_crosses_spread_by_one_tick():
 # ---------------------------------------------------------------------------
 
 
-def test_buy_entry_limit_uses_gtc_without_matching_engine_or_market_fallback():
+@pytest.mark.parametrize("leverage", [None, 1, 4, 5])
+def test_buy_entry_limit_uses_explicit_leverage_or_exchange_default(leverage):
     f = _make_futures()
     expected = _order_base("entry-buy", 0.00625, 0, side="buy")
     f.place_futures_order = MagicMock(return_value=expected)
@@ -116,6 +117,7 @@ def test_buy_entry_limit_uses_gtc_without_matching_engine_or_market_fallback():
         "KATUSDTM",
         qty=150,
         entry_limit_price=0.00625,
+        leverage=leverage,
     )
 
     assert result is expected
@@ -125,7 +127,7 @@ def test_buy_entry_limit_uses_gtc_without_matching_engine_or_market_fallback():
         side=AddOrderReq.SideEnum.BUY,
         size=150,
         price=0.00625,
-        leverage=2,
+        leverage=2 if leverage is None else leverage,
         order_type=OrderType.limit,
         reduce_only=False,
         time_in_force=AddOrderReq.TimeInForceEnum.GOOD_TILL_CANCELED,
