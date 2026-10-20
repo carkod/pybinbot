@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from pybinbot.shared.enums import DealType, OrderStatus
 from pybinbot.shared.types import Amount
-from pybinbot.models.deal import PositionSizeOrder
+from pybinbot.models.deal import PositionSizeOrder, ConditionalCloseOrder
 
 
 class OrderBase(BaseModel):
@@ -19,6 +19,9 @@ class OrderBase(BaseModel):
             "possible. Int is for backwards compatibility"
         )
     )
+    client_oid: str | None = None
+    requested_qty: float = Field(default=0, ge=0)
+    stop_price: float = Field(default=0, ge=0)
     order_side: str = Field(
         description=(
             "Because every exchange has different naming, we should keep it as a "
@@ -59,6 +62,9 @@ class DealModel(BaseModel):
     position_size_pct: float = Field(default=25, gt=0, le=100)
     position_size_reference_price: float = Field(default=0, ge=0)
     position_size_order: PositionSizeOrder | None = None
+    conditional_close_order: ConditionalCloseOrder | None = None
+    entry_client_oid: str | None = None
+    recovery_cancelled: bool = False
 
     base_order_size: Amount = Field(default=0, gt=-1)
     current_price: Amount = Field(default=0)
