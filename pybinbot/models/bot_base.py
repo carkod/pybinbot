@@ -106,8 +106,6 @@ class BotBase(BaseModel):
 
     @model_validator(mode="after")
     def validate_dynamic_position_sizing(self):
-        if self.name == "top_gainer_short" and self.recovery_params is not None:
-            raise ValueError("top_gainer_short uses position sizing without recovery")
         if self.dynamic_position_sizing:
             if self.recovery_params is not None:
                 raise ValueError(
