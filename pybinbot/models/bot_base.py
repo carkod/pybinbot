@@ -1,4 +1,5 @@
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -19,6 +20,8 @@ class RecoveryParams(BaseModel):
     source_contracts: float = Field(default=0, ge=0)
     source_loss_fiat: float = Field(default=0, ge=0)
     stop_loss_pct: float = Field(default=0, ge=0)
+    source_bot_id: UUID | None = None
+    source_close_order_id: str | None = None
 
 
 class BotBase(BaseModel):
@@ -55,10 +58,6 @@ class BotBase(BaseModel):
     status: Status = Field(default=Status.inactive)
     stop_loss: Amount = Field(
         default=0, ge=-1, le=101, description="If stop_loss > 0, allow for reversal"
-    )
-    margin_short_reversal: bool = Field(
-        default=False,
-        description="Autoswitch from long to short or short to long strategy",
     )
     recovery_params: RecoveryParams | None = None
     take_profit: Amount = Field(default=0, ge=-1, le=101)
@@ -98,7 +97,6 @@ class BotBase(BaseModel):
                     "trailing": True,
                     "trailing_deviation": 0.63,
                     "trailing_profit": 2.3,
-                    "margin_short_reversal": False,
                     "recovery_params": None,
                     "position": "long",
                 }
@@ -108,7 +106,13 @@ class BotBase(BaseModel):
 
     @model_validator(mode="after")
     def validate_dynamic_position_sizing(self):
+        if self.name == "top_gainer_short" and self.recovery_params is not None:
+            raise ValueError("top_gainer_short uses position sizing without recovery")
         if self.dynamic_position_sizing:
+            if self.recovery_params is not None:
+                raise ValueError(
+                    "Dynamic position sizing and recovery are mutually exclusive"
+                )
             if self.market_type != MarketType.FUTURES:
                 raise ValueError("Dynamic position sizing requires futures")
             if not 0 < self.stop_loss < 100 or self.take_profit <= 0:
