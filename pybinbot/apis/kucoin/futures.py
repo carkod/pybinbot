@@ -9,6 +9,7 @@ from pybinbot.models.order import OrderBase
 from kucoin_universal_sdk.generate.futures.order import (
     AddOrderReqBuilder,
     GetOrderByOrderIdReqBuilder,
+    GetOrderByClientOidReqBuilder,
     GetTradeHistoryReqBuilder,
     GetTradeHistoryResp,
     GetTradeHistoryReq,
@@ -649,6 +650,61 @@ class KucoinFutures(KucoinRest):
         resp = self.futures_order_api.get_order_by_order_id(request)
         return resp
 
+    def retrieve_order_by_client_oid(self, client_oid: str):
+        request = GetOrderByClientOidReqBuilder().set_client_oid(client_oid).build()
+        return self.futures_order_api.get_order_by_client_oid(request)
+
+    def get_order_execution(self, order_id: str) -> tuple[float, float, int]:
+        """Confirmed cumulative fills, weighted price and last execution time."""
+        quantity = 0.0
+        price = 0.0
+        executed_at = 0
+        try:
+            details = self.retrieve_order(order_id)
+            quantity = float(details.filled_size or 0)
+            price = float(details.avg_deal_price or 0)
+            executed_at = int(details.end_at or details.updated_at or 0)
+        except RestError as exc:
+            if str(exc.response.code) != "100001" or not any(
+                text in str(exc.response.message).lower()
+                for text in (
+                    "order not found",
+                    "order not exist",
+                    "order does not exist",
+                    "getorder.ordernotexist",
+                )
+            ):
+                raise
+        if quantity > 0 and price > 0:
+            return quantity, price, executed_at
+
+        fills_by_id = {}
+        page = 1
+        while True:
+            response = self.get_fills(
+                order_id=order_id, current_page=page, page_size=100
+            )
+            for fill in response.items or []:
+                if str(fill.order_id) == order_id:
+                    fills_by_id[str(fill.trade_id)] = fill
+            if not response.items or page >= (response.total_page or 1):
+                break
+            page += 1
+        filled_quantity = sum(float(fill.size or 0) for fill in fills_by_id.values())
+        notional = sum(
+            float(fill.size or 0) * float(fill.price or 0)
+            for fill in fills_by_id.values()
+        )
+        if filled_quantity < quantity or filled_quantity <= 0 or notional <= 0:
+            return quantity, 0, 0
+        executed_at = max(
+            int(fill.trade_time) // 1_000_000
+            if fill.trade_time
+            else int(fill.created_at or 0)
+            for fill in fills_by_id.values()
+        )
+        return filled_quantity, notional / filled_quantity, executed_at
+
     def transfer_main_to_futures(
         self, currency: str, amount: float
     ) -> FlexTransferResp:
@@ -899,6 +955,7 @@ class KucoinFutures(KucoinRest):
         time_in_force: AddOrderReq.TimeInForceEnum | None = None,
         post_only: bool = False,
         allow_market_fallback: bool = True,
+        client_oid: str | None = None,
     ) -> OrderBase:
         """Place a Kucoin futures order using the official SDK.
 
@@ -922,7 +979,7 @@ class KucoinFutures(KucoinRest):
                 as a market order.
         """
 
-        client_oid = str(uuid4())
+        client_oid = client_oid or str(uuid4())
 
         # Ensure the symbol-level margin mode is set before placing the order.
         if margin_mode is not None:
@@ -979,9 +1036,9 @@ class KucoinFutures(KucoinRest):
         order_resp = self.futures_order_api.add_order(req)
 
         if not order_resp or not order_resp.order_id:
-            if not allow_market_fallback:
+            if stop is not None or not allow_market_fallback:
                 raise RuntimeError(
-                    f"Limit entry order was not accepted for {symbol}; market fallback is disabled"
+                    f"Order submission was not acknowledged for {symbol}; market fallback is disabled (clientOid {client_oid})"
                 )
             order_resp = self.place_futures_order(
                 symbol=symbol,
@@ -1003,8 +1060,8 @@ class KucoinFutures(KucoinRest):
             order_details = self.retrieve_order(order_resp.order_id)
             # status it he only enum field to help with db consistency
             status = OrderStatus.map_from_kucoin_status(order_details.status.value)
-            filled_size = float(order_details.filled_size)
-            price_used = float(order_details.avg_deal_price)
+            filled_size = float(order_details.filled_size or 0)
+            price_used = float(order_details.avg_deal_price or 0)
             # KuCoin's "done" status means the order's lifecycle ended, which
             # includes cancellations — it does not guarantee a fill. Without
             # this check, a stop/conditional order that was accepted and then
@@ -1024,10 +1081,9 @@ class KucoinFutures(KucoinRest):
                 # Order not yet visible in details endpoint — fall back to
                 # the request inputs we already have (do NOT touch order_details,
                 # which is unbound here).
-                fallback_price = price if price is not None else (stop_price or 0)
                 status = OrderStatus.NEW
-                filled_size = size
-                price_used = fallback_price
+                filled_size = 0
+                price_used = 0
                 timestamp = int(time() * 1000)
                 order_type_value = type_enum.value
                 time_in_force_value = (
@@ -1042,6 +1098,9 @@ class KucoinFutures(KucoinRest):
             time_in_force=time_in_force_value,
             timestamp=timestamp,
             order_id=order_resp.order_id,
+            client_oid=client_oid,
+            requested_qty=size,
+            stop_price=stop_price or 0,
             order_side=order_side_value,
             pair=symbol,
             qty=filled_size,
@@ -1131,7 +1190,17 @@ class KucoinFutures(KucoinRest):
             builder = builder.set_page_size(page_size)
 
         req = builder.build()
-        return self.futures_order_api.get_trade_history(req)
+        response = self.futures_order_api.get_trade_history(req)
+        # Some SDK responses retain the payload but omit the decoded items.
+        if (
+            response.items is None
+            and response.common_response is not None
+            and isinstance(response.common_response.data, dict)
+        ):
+            decoded = GetTradeHistoryResp.model_validate(response.common_response.data)
+            decoded.common_response = response.common_response
+            return decoded
+        return response
 
     def get_open_interest(self, symbol: str) -> str:
         """

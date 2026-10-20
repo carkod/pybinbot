@@ -61,4 +61,6 @@ def test_bot_base_recovery_params_are_optional_and_serialized() -> None:
         "source_contracts": 0,
         "source_loss_fiat": 0,
         "stop_loss_pct": 0,
+        "source_bot_id": None,
+        "source_close_order_id": None,
     }
