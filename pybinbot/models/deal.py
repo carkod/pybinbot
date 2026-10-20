@@ -25,7 +25,7 @@ class ConditionalCloseOrder(BaseModel):
     client_oid: str
     requested_qty: float = Field(gt=0)
     stop_price: float = Field(gt=0)
-    order_id: str | None = None
+    order_id: str | None = Field(default=None)
     deal_type: DealType = DealType.stop_loss
     not_found_count: int = Field(default=0, ge=0)
     not_found_since_ms: int = Field(default=0, ge=0)
@@ -36,10 +36,10 @@ class DealBase(BaseModel):
 
     position_size_pct: float = Field(default=25, gt=0, le=100)
     position_size_reference_price: float = Field(default=0, ge=0)
-    position_size_order: PositionSizeOrder | None = None
-    conditional_close_order: ConditionalCloseOrder | None = None
-    entry_client_oid: str | None = None
-    recovery_cancelled: bool = False
+    position_size_order: PositionSizeOrder | None = Field(default=None)
+    conditional_close_order: ConditionalCloseOrder | None = Field(default=None)
+    entry_client_oid: str | None = Field(default=None)
+    recovery_cancelled: bool = Field(default=False)
 
     base_order_size: Amount = Field(
         default=0, gt=-1, description="For Futures, this is the number of contracts"

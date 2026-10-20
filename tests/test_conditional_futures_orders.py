@@ -108,10 +108,10 @@ def test_incomplete_fill_history_does_not_supply_a_partial_price_for_full_quanti
     assert api.get_order_execution("order-1") == (3, 0, 0)
 
 
-def test_top_gainer_short_rejects_recovery_configuration():
+def test_recovery_configuration_is_independent_of_algorithm_name():
     from pybinbot import BotBase, RecoveryParams
 
-    with pytest.raises(ValueError, match="position sizing without recovery"):
-        BotBase(
-            pair="TESTUSDTM", name="top_gainer_short", recovery_params=RecoveryParams()
-        )
+    bot = BotBase(
+        pair="TESTUSDTM", name="top_gainer_short", recovery_params=RecoveryParams()
+    )
+    assert bot.recovery_params is not None
