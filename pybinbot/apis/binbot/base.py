@@ -515,14 +515,16 @@ class BinbotApi:
         return BotResponse.model_validate(response)
 
     def activate_bot(self, bot_id: str) -> BotResponse:
-        response = self.request(url=f"{self.bb_activate_bot_url}/{bot_id}")
+        response = self.request(
+            url=f"{self.bb_activate_bot_url}/{bot_id}", method="POST"
+        )
         return BotResponse.model_validate(response)
 
     def deactivate_bot(
         self, bot_id: str, algorithmic_close: bool = False
     ) -> BotResponse:
         response = self.request(
-            method="DELETE",
+            method="POST",
             url=f"{self.bb_deactivate_bot_url}/{bot_id}",
             params={"algorithmic_close": algorithmic_close},
         )

@@ -465,15 +465,23 @@ class TestBotRouteResponses:
         api_class = load_binbot_api_class()
         api = object.__new__(api_class)
         api.bb_activate_bot_url = "https://example.com/bot/activate"
-        api.request = lambda **kwargs: {
-            "message": "Successfully activated bot.",
-            "data": {"id": "bot-1"},
-        }
+        captured: dict = {}
+
+        def fake_request(**kwargs):
+            captured.update(kwargs)
+            return {
+                "message": "Successfully activated bot.",
+                "data": {"id": "bot-1"},
+            }
+
+        api.request = fake_request
 
         result = api.activate_bot("bot-1")
 
         assert isinstance(result, _BotResponse)
         assert result.message == "Successfully activated bot."
+        assert captured["url"] == "https://example.com/bot/activate/bot-1"
+        assert captured["method"] == "POST"
 
     def test_deactivate_bot_validates_bot_response(self) -> None:
         api_class = load_binbot_api_class()
@@ -496,7 +504,7 @@ class TestBotRouteResponses:
         assert isinstance(result, _BotResponse)
         assert result.message == "Successfully triggered panic sell! Bot deactivated."
         assert captured["url"] == "https://example.com/bot/deactivate/bot-1"
-        assert captured["method"] == "DELETE"
+        assert captured["method"] == "POST"
         assert captured["params"] == {"algorithmic_close": True}
 
     def test_delete_bot_sends_bulk_delete_json_and_validates_response(self) -> None:
