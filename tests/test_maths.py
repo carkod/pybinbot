@@ -1,6 +1,13 @@
 import pytest
 
 from pybinbot.shared import maths
+from pybinbot.shared.enums import Position
+from pybinbot.shared.maths import (
+    ceil_price_to_tick,
+    floor_price_to_tick,
+    resolve_tick_size,
+    stop_limit_price,
+)
 
 
 def test_coerce_number():
@@ -83,3 +90,38 @@ def test_format_ts():
 def test_zero_remainder():
     assert maths.zero_remainder(5) == 5
     assert maths.zero_remainder(7) == 7
+
+
+def test_floor_price_to_tick_uses_exact_increment_not_decimal_precision():
+    assert floor_price_to_tick(1.063, 0.005) == 1.06
+
+
+def test_ceil_price_to_tick_uses_exact_increment_not_decimal_precision():
+    assert ceil_price_to_tick(1.061, 0.005) == 1.065
+
+
+@pytest.mark.parametrize("tick_size", [0, -0.01, float("nan")])
+def test_floor_price_to_tick_rejects_invalid_tick_size(tick_size):
+    with pytest.raises(ValueError, match="Tick size must be positive"):
+        floor_price_to_tick(1.0, tick_size)
+
+
+def test_resolve_tick_size_prefers_exchange_tick_over_precision():
+    assert resolve_tick_size("0.005", 2) == 0.005
+    assert resolve_tick_size(None, 4) == 0.0001
+
+
+@pytest.mark.parametrize(
+    "position,expected_limit", [(Position.long, 97.51), (Position.short, 102.51)]
+)
+def test_stop_limit_price_sits_offset_past_stop_on_tick(position, expected_limit):
+    stop_price = 102.0 if position == Position.short else 98.0
+
+    assert stop_limit_price(stop_price, position, tick_size=0.01) == expected_limit
+
+
+def test_stop_limit_price_rounds_away_from_stop_on_coarse_ticks():
+    """FHEUSDTM: SL 0.02249 on a 0.00001 tick rests the sell at 0.02237."""
+    assert stop_limit_price(0.02249, Position.long, tick_size=0.00001) == 0.02237
+    # 1.005 * 1.063 = 1.068315 rounds up to the next 0.005 tick, never down.
+    assert stop_limit_price(1.063, Position.short, tick_size=0.005) == 1.07
