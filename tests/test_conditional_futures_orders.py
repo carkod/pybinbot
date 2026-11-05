@@ -11,18 +11,18 @@ def test_conditional_missing_acknowledgement_never_retries_as_unconditional_mark
     api.futures_order_api = SimpleNamespace(
         add_order=Mock(return_value=SimpleNamespace(order_id=None))
     )
-    with pytest.raises(RuntimeError, match="market fallback is disabled"):
+    with pytest.raises(RuntimeError, match="not acknowledged"):
         api.place_futures_order(
             symbol="TESTUSDTM",
             side=AddOrderReq.SideEnum.SELL,
             size=101,
             margin_mode=None,
-            order_type=OrderType.market,
+            order_type=OrderType.limit,
+            price=97.5,
             stop=AddOrderReq.StopEnum.DOWN,
             stop_price=98,
             stop_price_type=AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
             reduce_only=True,
-            allow_market_fallback=True,
             client_oid="persisted-before-call",
         )
     api.futures_order_api.add_order.assert_called_once()
