@@ -15,7 +15,7 @@ from pybinbot import KucoinFutures, OrderStatus, OrderType
 
 def _make_futures() -> Any:
     """Bypass KucoinFutures.__init__ to avoid SDK side effects."""
-    f = object.__new__(KucoinFutures)
+    f: Any = object.__new__(KucoinFutures)
     f.DEFAULT_LEVERAGE = 2
     f.set_futures_margin_mode = MagicMock()
     f.futures_order_api = MagicMock()

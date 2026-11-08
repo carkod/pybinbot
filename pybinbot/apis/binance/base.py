@@ -22,12 +22,12 @@ class BinanceApi:
     api_servers = [
         "https://api.binance.com",
         "https://api1.binance.com",
-        "https://api3.binance.com",
+        "https://api2.binance.com",
+        "https://api4.binance.com",
         "https://api-gcp.binance.com",
     ]
-    market_api_servers = ["https://data-api.binance.vision", "https://api3.binance.com"]
+    MARKET_DATA_BASE = "https://data-api.binance.vision"
     BASE = api_servers[randrange(2) - 1]
-    MARKET_DATA_BASE = market_api_servers[randrange(3) - 1]
     WAPI = f"{BASE}/api/v3/depth"
     WS_BASE = "wss://stream.binance.com:9443/stream?streams="
     tags_url = "https://www.binance.com/bapi/asset/v2/public/asset-service/product/get-product-by-symbol"
@@ -39,7 +39,7 @@ class BinanceApi:
     exchangeinfo_url = f"{MARKET_DATA_BASE}/api/v3/exchangeInfo"
     ticker_price_url = f"{MARKET_DATA_BASE}/api/v3/ticker/price"
     ticker24_url = f"{MARKET_DATA_BASE}/api/v3/ticker/24hr"
-    candlestick_url = "https://api3.binance.com/api/v3/uiKlines"
+    candlestick_url = f"{MARKET_DATA_BASE}/api/v3/uiKlines"
     order_url = f"{BASE}/api/v3/order"
     order_book_url = f"{BASE}/api/v3/depth"
     avg_price = f"{BASE}/api/v3/avgPrice"
