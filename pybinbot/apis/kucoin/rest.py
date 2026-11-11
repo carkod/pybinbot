@@ -27,7 +27,7 @@ class KucoinRest:
         """Log a warning or briefly sleep when the KuCoin rate-limit bucket runs low."""
         try:
             remaining_int = int(remaining)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return
         if remaining_int < 0:
             return

@@ -14,7 +14,7 @@ STOP_LIMIT_OFFSET_RATIO = 0.005  # 0.5% of the stop price
 def coerce_number(value: Any) -> float | None:
     try:
         parsed = float(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     if not math.isfinite(parsed):
         return None
