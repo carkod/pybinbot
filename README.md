@@ -8,7 +8,13 @@ This module re-exports the internal ``shared`` and ``models`` packages and the m
 
         from pybinbot import round_numbers, ExchangeId
 
-The implementation deliberately avoids importing heavy third-party libraries at module import time.
+Python 3.12 or newer is required. Pandas and NumPy use matching version pins in
+pybinbot, binbot, and binquant. Import these libraries directly:
+
+```python
+import numpy as np
+import pandas as pd
+```
 
 
 ## Installation
