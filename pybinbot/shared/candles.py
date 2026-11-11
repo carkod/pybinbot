@@ -126,7 +126,7 @@ class Candles:
                 continue
             try:
                 open_time = float(open_time_value)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
             if not isfinite(open_time):
                 continue
@@ -140,7 +140,7 @@ class Candles:
                     continue
                 try:
                     close_time = float(close_time_value)
-                except (TypeError, ValueError):
+                except TypeError, ValueError:
                     continue
                 if not isfinite(close_time):
                     continue
