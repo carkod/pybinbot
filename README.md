@@ -19,6 +19,19 @@ uv sync --extra dev
 
 `--extra dev` also installs development tools like ruff and mypy
 
+## Telegram delivery
+
+Import `TelegramDelivery` from `pybinbot.shared.telegram_delivery`. Initialization
+loads the application's `.env` and reads `TELEGRAM_BOT_KEY` and `TELEGRAM_USER_ID`,
+without overriding existing environment variables. Credentials may also be
+passed explicitly.
+
+Use `send_once(message)` for a synchronous attempt with a short timeout and no
+retry or cooldown. Use `await send(message)` for asynchronous delivery with
+rate-limit retries and optional spacing configured at initialization. Both use
+HTML formatting and disable link previews. Delivery does not persist messages.
+The Telegram library is installed as a dependency of pybinbot.
+
 
 ## Publishing
 
