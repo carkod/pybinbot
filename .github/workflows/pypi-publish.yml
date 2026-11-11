@@ -11,7 +11,7 @@ jobs:
       changed: ${{ steps.diff.outputs.changed }}
       version: ${{ steps.diff.outputs.version }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - name: Compare pyproject.toml version against PR base
@@ -47,9 +47,9 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@v7.1.0
         with:
           python-version-file: '.python-version'
       - name: Install build dependencies
@@ -60,7 +60,7 @@ jobs:
         run: |
           python -m build
       - name: Publish to PyPI with OIDC
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@v1.14.3
         with:
           repository-url: https://upload.pypi.org/legacy/
 
@@ -71,9 +71,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@v7.1.0
         with:
           python-version-file: '.python-version'
       - name: Install build dependencies
@@ -85,7 +85,7 @@ jobs:
           python -m build
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3.0.4
         with:
           files: |
             dist/*.whl

@@ -1,7 +1,7 @@
 import json
 import logging
-import threading
 import time
+from threading import Thread
 
 from websocket import (
     ABNF,
@@ -11,7 +11,7 @@ from websocket import (
 )
 
 
-class BinanceSocketManager(threading.Thread):
+class BinanceSocketManager(Thread):
     def __init__(
         self,
         stream_url,
@@ -23,7 +23,7 @@ class BinanceSocketManager(threading.Thread):
         on_pong=None,
         logger=None,
     ):
-        threading.Thread.__init__(self)
+        Thread.__init__(self)
         if not logger:
             logger = logging.getLogger(__name__)
         self.logger = logger

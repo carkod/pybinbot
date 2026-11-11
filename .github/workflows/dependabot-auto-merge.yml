@@ -15,13 +15,13 @@ jobs:
     steps:
       - name: Dependabot metadata
         id: meta
-        uses: dependabot/fetch-metadata@v3
+        uses: dependabot/fetch-metadata@v3.1.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify head commit signature
         id: verify
-        uses: actions/github-script@v9
+        uses: actions/github-script@v9.0.0
         with:
           script: |
             const owner = context.repo.owner;
@@ -33,7 +33,7 @@ jobs:
 
       - name: Enable auto-merge for patch updates
         if: steps.meta.outputs.update-type == 'version-update:semver-patch' && steps.verify.outputs.verified == 'true'
-        uses: peter-evans/enable-pull-request-automerge@v3
+        uses: peter-evans/enable-pull-request-automerge@v3.0.0
         with:
           pull-request-number: ${{ github.event.pull_request.number }}
           merge-method: squash
