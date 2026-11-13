@@ -38,6 +38,7 @@ from pybinbot.shared.enums import (
     BinanceOrderModel,
     CloseConditions,
     DealType,
+    EntryMode,
     ExchangeId,
     KucoinKlineIntervals,
     MarketDominance,
@@ -282,6 +283,7 @@ __all__ = [
     # enums
     "CloseConditions",
     "DealType",
+    "EntryMode",
     "BinanceOrderModel",
     "Status",
     "Position",
