@@ -60,6 +60,11 @@ class Status(str, Enum):
     error = "error"
 
 
+class EntryMode(str, Enum):
+    immediate = "immediate"
+    conditional_limit = "conditional_limit"
+
+
 class Position(str, Enum):
     long = "long"
     short = "short"
