@@ -1,11 +1,12 @@
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
 from pybinbot.shared.enums import (
     BinanceKlineIntervals,
     CloseConditions,
+    EntryMode,
     MarketType,
     Position,
     QuoteAssets,
@@ -46,6 +47,14 @@ class BotBase(BaseModel):
     )
     created_at: float = Field(default_factory=timestamp)
     updated_at: float = Field(default_factory=timestamp)
+    entry_mode: EntryMode = Field(default=EntryMode.immediate, validate_default=True)
+    entry_price: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    entry_expires_at: float = Field(
+        default_factory=lambda data: data["created_at"] + 6 * 60 * 60 * 1000,
+        gt=0,
+        allow_inf_nan=False,
+        description="Absolute entry deadline in Unix milliseconds; defaults to creation + 6 hours",
+    )
     dynamic_trailing: bool = Field(default=False)
     dynamic_position_sizing: bool = Field(default=False)
     logs: list = Field(default=[])
@@ -103,6 +112,27 @@ class BotBase(BaseModel):
             ],
         },
     }
+
+    @field_validator("entry_mode", mode="before")
+    @classmethod
+    def default_entry_mode(cls, value):
+        return EntryMode.immediate if value is None else value
+
+    @field_validator("entry_expires_at", mode="before")
+    @classmethod
+    def default_entry_expiry(cls, value, info: ValidationInfo):
+        return info.data["created_at"] + 6 * 60 * 60 * 1000 if value is None else value
+
+    @model_validator(mode="after")
+    def validate_conditional_entry(self):
+        if self.entry_mode == EntryMode.conditional_limit:
+            if self.entry_price is None or self.entry_price <= 0:
+                raise ValueError(
+                    "Conditional limit entry requires a positive entry_price"
+                )
+            if self.market_type != MarketType.FUTURES:
+                raise ValueError("Conditional limit entry currently requires futures")
+        return self
 
     @model_validator(mode="after")
     def validate_dynamic_position_sizing(self):
