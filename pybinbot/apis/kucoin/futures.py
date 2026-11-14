@@ -1,5 +1,6 @@
 import logging
 from decimal import Decimal
+from math import isfinite
 from pybinbot import KucoinRest, KucoinKlineIntervals, OrderType, OrderStatus, DealType
 from requests import HTTPError, request
 from uuid import uuid4
@@ -27,6 +28,7 @@ from kucoin_universal_sdk.generate.futures.market import (
     GetMarkPriceReqBuilder,
     GetSymbolReqBuilder,
     GetSymbolResp,
+    GetTickerReqBuilder,
 )
 from kucoin_universal_sdk.generate.futures.fundingfees import (
     GetPublicFundingHistoryReqBuilder,
@@ -203,6 +205,23 @@ class KucoinFutures(KucoinRest):
             for item in response.data or []
             if item.funding_rate is not None
         ]
+
+    def get_ticker_price(self, symbol: str) -> float:
+        """Return the last traded futures price from the contract ticker."""
+        req = GetTickerReqBuilder().set_symbol(symbol).build()
+        response = self.futures_market_api.get_ticker(req)
+        if response is None:
+            raise ValueError(f"KuCoin futures ticker returned no response for {symbol}")
+        if response.price is None:
+            raise ValueError(
+                f"KuCoin futures ticker returned no price for {symbol}: {response!r}"
+            )
+        price = float(response.price)
+        if not isfinite(price) or price <= 0:
+            raise ValueError(
+                f"KuCoin futures ticker returned an invalid price for {symbol}"
+            )
+        return price
 
     def get_mark_price(self, symbol: str) -> float:
         req = GetMarkPriceReqBuilder().set_symbol(symbol).build()
@@ -573,11 +592,11 @@ class KucoinFutures(KucoinRest):
             margin_mode: Optional margin mode, "ISOLATED" or "CROSS".
             reduce_only: Optional reduce-only flag.
             close_order: Optional close-position flag.
-            stop: Optional stop direction (DOWN/UP). If provided, stop_price and
-                stop_price_type must also be set.
+            stop: Optional stop direction (DOWN/UP). Requires stop_price.
             stop_price: Optional stop trigger price. Required when stop is set.
-            stop_price_type: Optional stop price type (TP/MP/IP). Required when
-                stop is set.
+            stop_price_type: Optional stop price type (TP/MP/IP). Defaults to
+                last traded price (TP) for all conditional orders. An explicit
+                value overrides the default. Has no effect without stop.
             post_only: Whether a limit order must rest as maker liquidity.
             client_oid: Caller-owned idempotency key; generated when omitted.
         """
@@ -627,10 +646,10 @@ class KucoinFutures(KucoinRest):
 
         # Optional stop-loss / take-profit trigger parameters
         if stop is not None:
-            if stop_price is None or stop_price_type is None:
-                raise ValueError(
-                    "stop_price and stop_price_type must be provided when stop is set"
-                )
+            if stop_price is None:
+                raise ValueError("stop_price must be provided when stop is set")
+            if stop_price_type is None:
+                stop_price_type = AddOrderReq.StopPriceTypeEnum.TRADE_PRICE
             builder = builder.set_stop(stop)
             builder = builder.set_stop_price(str(stop_price))
             builder = builder.set_stop_price_type(stop_price_type)

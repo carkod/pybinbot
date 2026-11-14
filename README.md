@@ -25,6 +25,22 @@ uv sync --extra dev
 
 `--extra dev` also installs development tools like ruff and mypy
 
+## Futures order triggers
+
+`KucoinFutures.place_futures_order()` defaults every conditional order to KuCoin's
+last traded price (`stopPriceType=TP`) when `stop_price_type` is omitted or `None`.
+This applies to both buy and sell orders, stop-market and stop-limit orders, and
+opening and reducing orders. Explicit mark/index trigger types remain supported.
+Orders without `stop` do not send a trigger-price type. Trigger levels, limit
+prices, quantities, leverage, and fill handling are unchanged.
+
+Last price can fluctuate more than mark price, but selecting it does not guarantee
+the highest selling price or lowest buying price; fills depend on the order book.
+
+`KucoinFutures.get_ticker_price(symbol)` returns the last traded contract price
+from the futures ticker. The spot client exposes the same method for spot prices;
+`KucoinFutures.get_mark_price(symbol)` remains available for mark prices.
+
 ## Telegram delivery
 
 Import `TelegramDelivery` from `pybinbot.shared.telegram_delivery`. Initialization
