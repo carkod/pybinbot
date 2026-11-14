@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from kucoin_universal_sdk.generate.futures.order.model_add_order_req import AddOrderReq
+
 from pybinbot import KucoinFutures, OrderStatus, OrderType
 
 
@@ -113,3 +114,115 @@ def test_place_futures_order_marks_zero_fill_done_order_as_canceled_not_filled()
 
     assert result.status == OrderStatus.CANCELED
     assert result.qty == 0
+
+
+@pytest.mark.parametrize("order_type", [OrderType.limit, OrderType.market])
+@pytest.mark.parametrize(
+    "side,stop,reduce_only",
+    [
+        pytest.param("sell", "down", True, id="long-stop-loss"),
+        pytest.param("buy", "up", True, id="short-stop-loss"),
+        pytest.param("sell", "up", True, id="long-take-profit"),
+        pytest.param("buy", "down", True, id="short-take-profit"),
+        pytest.param("buy", "up", False, id="conditional-long-entry"),
+        pytest.param("sell", "down", False, id="conditional-short-entry"),
+    ],
+)
+def test_all_conditional_order_paths_default_to_last_trade(
+    order_type, side, stop, reduce_only
+):
+    f = _make_futures()
+    f.futures_order_api.add_order.return_value = types.SimpleNamespace(
+        order_id="conditional-order"
+    )
+    f.retrieve_order = lambda oid: types.SimpleNamespace(
+        status=types.SimpleNamespace(value="open"),
+        filled_size="0",
+        avg_deal_price="0",
+        created_at=1000000,
+        type=types.SimpleNamespace(value=order_type.value.lower()),
+        time_in_force="GTC",
+        side=types.SimpleNamespace(value=side),
+    )
+
+    with patch("pybinbot.apis.kucoin.futures.sleep"):
+        result = f.place_futures_order(
+            symbol="XBTUSDTM",
+            side=AddOrderReq.SideEnum(side),
+            size=8,
+            leverage=3,
+            order_type=order_type,
+            price=97.5 if order_type == OrderType.limit else None,
+            stop=AddOrderReq.StopEnum(stop),
+            stop_price=98,
+            reduce_only=reduce_only,
+            client_oid="conditional-oid",
+        )
+
+    f.futures_order_api.add_order.assert_called_once()
+    request = f.futures_order_api.add_order.call_args.args[0]
+    assert request.stop_price_type == AddOrderReq.StopPriceTypeEnum.TRADE_PRICE
+    assert request.stop_price == "98"
+    assert request.stop.value == stop
+    assert request.side.value == side
+    assert request.type.value == order_type.value.lower()
+    assert request.price == ("97.5" if order_type == OrderType.limit else None)
+    assert request.size == 8
+    assert request.leverage == 3
+    assert request.reduce_only is reduce_only
+    assert request.client_oid == "conditional-oid"
+    assert result.stop_price == 98
+    assert result.status == OrderStatus.NEW
+
+
+@pytest.mark.parametrize(
+    "trigger_type",
+    [
+        None,
+        AddOrderReq.StopPriceTypeEnum.MARK_PRICE,
+        AddOrderReq.StopPriceTypeEnum.INDEX_PRICE,
+    ],
+)
+def test_conditional_trigger_uses_last_trade_for_none_and_respects_explicit_types(
+    trigger_type,
+):
+    f = _make_futures()
+    f.futures_order_api.add_order.return_value = None
+
+    with pytest.raises(RuntimeError, match="not acknowledged"):
+        f.place_futures_order(
+            symbol="XBTUSDTM",
+            side=AddOrderReq.SideEnum.SELL,
+            size=8,
+            order_type=OrderType.market,
+            stop=AddOrderReq.StopEnum.DOWN,
+            stop_price=98,
+            stop_price_type=trigger_type,
+        )
+
+    request = f.futures_order_api.add_order.call_args.args[0]
+    assert request.stop_price_type == (
+        trigger_type
+        if trigger_type is not None
+        else AddOrderReq.StopPriceTypeEnum.TRADE_PRICE
+    )
+
+
+@pytest.mark.parametrize("order_type", [OrderType.limit, OrderType.market])
+def test_ordinary_orders_do_not_send_conditional_trigger_fields(order_type):
+    f = _make_futures()
+    f.futures_order_api.add_order.return_value = None
+
+    with pytest.raises(RuntimeError, match="not acknowledged"):
+        f.place_futures_order(
+            symbol="XBTUSDTM",
+            side=AddOrderReq.SideEnum.BUY,
+            size=8,
+            order_type=order_type,
+            price=100 if order_type == OrderType.limit else None,
+        )
+
+    request = f.futures_order_api.add_order.call_args.args[0]
+    assert request.stop is None
+    assert request.stop_price is None
+    assert request.stop_price_type is None
