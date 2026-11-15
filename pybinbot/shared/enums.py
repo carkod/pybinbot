@@ -57,6 +57,7 @@ class Status(str, Enum):
     active = "active"
     pending = "pending"
     completed = "completed"
+    closed = "closed"
     error = "error"
 
 
