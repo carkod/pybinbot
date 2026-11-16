@@ -28,6 +28,7 @@ from pybinbot import (
 )
 from datetime import datetime, timezone
 from dateutil.parser import parse
+from pybinbot.models.cvd import CvdAggregateResponse, CvdSymbolResponse
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,8 @@ class BinbotApi:
         self.bb_top_losers = f"{bb_base_url}/charts/top-losers"
         self.bb_timeseries_url = f"{bb_base_url}/charts/timeseries"
         self.bb_market_breadth_url = f"{bb_base_url}/charts/market-breadth"
+        self.bb_cvd_symbol_url = f"{bb_base_url}/charts/cvd-symbol"
+        self.bb_cvd_aggregate_url = f"{bb_base_url}/charts/cvd-aggregate"
         self.bb_gainers_losers_series_url = (
             f"{bb_base_url}/charts/gainers-losers-series"
         )
@@ -302,6 +305,26 @@ class BinbotApi:
         if response.get("data") is None:
             return []
         return GainersLosersSeriesResponse.model_validate(response).data
+
+    async def get_cvd_symbol(self, symbol: str, limit: int = 15) -> CvdSymbolResponse:
+        """Read oldest-first one-minute contract CVD, including coverage flags.
+
+        The endpoint returns a bare snapshot, not a StandardResponse envelope.
+        HTTP and validation failures propagate so callers can distinguish an
+        unavailable feed from an observed zero or empty collection.
+        """
+        response = await self.fetch(
+            url=self.bb_cvd_symbol_url,
+            params={"symbol": symbol.upper(), "limit": limit},
+        )
+        return CvdSymbolResponse.model_validate(response)
+
+    async def get_cvd_aggregate(self, limit: int = 672) -> CvdAggregateResponse:
+        """Read oldest-first 15-minute market CVD with gaps and freshness."""
+        response = await self.fetch(
+            url=self.bb_cvd_aggregate_url, params={"limit": limit}
+        )
+        return CvdAggregateResponse.model_validate(response)
 
     async def create_signal(
         self,
