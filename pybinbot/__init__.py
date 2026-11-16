@@ -120,6 +120,7 @@ from pybinbot.models.signals import (
     SignalsConsumer,
 )
 from pybinbot.models.symbol import SymbolModel
+from pybinbot.models.cvd import CvdAggregateResponse, CvdPoint, CvdSymbolResponse
 from pybinbot.models.routes import (
     GainerLoserEntry,
     GainersLosersSeriesResponse,
@@ -212,6 +213,9 @@ __all__ = [
     "GainersLosersSnapshot",
     "MarketBreadthSeries",
     "MarketBreadthSeriesResponse",
+    "CvdPoint",
+    "CvdAggregateResponse",
+    "CvdSymbolResponse",
     "AutotradeSettings",
     "AutotradeSettingsResponse",
     "AutotradeSettingsSchema",
