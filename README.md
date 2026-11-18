@@ -41,6 +41,29 @@ the highest selling price or lowest buying price; fills depend on the order book
 from the futures ticker. The spot client exposes the same method for spot prices;
 `KucoinFutures.get_mark_price(symbol)` remains available for mark prices.
 
+## Stored CVD data
+
+`BinbotApi` exposes the recorded KuCoin futures CVD endpoints:
+
+```python
+symbol_cvd = await api.get_cvd_symbol("RUMUSDTM", limit=15)
+market_cvd = await api.get_cvd_aggregate(limit=15)
+```
+
+`CvdSymbolResponse`, `CvdAggregateResponse` and `CvdPoint` are public exports.
+Symbol observations are one-minute buckets; aggregate observations are
+15-minute buckets. Both are oldest first and retain the current/partial,
+coverage, gap, universe or contract multiplier change, reset, and checkpoint
+freshness fields. Missing values remain `None`, and empty collections remain
+empty. Timestamp fields require time zones and numeric observations must be
+finite. The endpoint responses are bare snapshots rather than
+`StandardResponse` envelopes. Request and validation errors propagate to the
+caller; a failed request never becomes a zero-valued reading.
+
+Publish a new PyPI release before consuming these methods in binquant or
+binbot, then upgrade each consumer's minimum dependency and lockfile to that
+release.
+
 ## Telegram delivery
 
 Import `TelegramDelivery` from `pybinbot.shared.telegram_delivery`. Initialization
