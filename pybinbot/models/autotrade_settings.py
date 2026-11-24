@@ -4,7 +4,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from pybinbot.models.routes import StandardResponse
 from pybinbot.shared.enums import (
     AutotradeSettingsDocument,
-    BinanceKlineIntervals,
     CloseConditions,
     ExchangeId,
 )
@@ -12,9 +11,6 @@ from pybinbot.shared.enums import (
 
 class AutotradeSettingsSchema(BaseModel):
     id: AutotradeSettingsDocument = AutotradeSettingsDocument.settings
-    candlestick_interval: BinanceKlineIntervals = Field(
-        default=BinanceKlineIntervals.fifteen_minutes,
-    )
     close_condition: CloseConditions = Field(
         default=CloseConditions.dynamic_trailing,
     )
