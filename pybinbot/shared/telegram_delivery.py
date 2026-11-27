@@ -1,7 +1,7 @@
 """Telegram delivery shared by synchronous trading and asynchronous analytics."""
 
 import asyncio
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
 import os
 import re
@@ -83,35 +83,64 @@ class TelegramDelivery:
             return retry_after.total_seconds()
         return float(retry_after)
 
-    async def send(self, message: str) -> bool:
+    async def send(
+        self,
+        message: str,
+        *,
+        expires_at: datetime | None = None,
+        retry_on_rate_limit: bool = True,
+    ) -> bool:
+        """Deliver within an optional deadline, including time spent waiting to send."""
         if not self.token or not self.chat_id or self.bot is None:
             return False
-        async with self._send_lock:
-            while True:
-                await self._sleep_for_send_interval()
-                try:
-                    await self.bot.send_message(
-                        self.chat_id,
-                        text=self._sanitize_html(message),
-                        parse_mode=ParseMode.HTML,
-                        link_preview_options=LinkPreviewOptions(is_disabled=True),
-                    )
-                    self._last_send_at = time.monotonic()
-                    return True
-                except RetryAfter as e:
-                    retry_after = self._retry_after_seconds(e)
-                    sleep_seconds = retry_after + self._retry_after_pad_seconds
-                    logging.warning(
-                        "Telegram flood control active; retrying message in %.1f seconds",
-                        sleep_seconds,
-                    )
-                    await asyncio.sleep(sleep_seconds)
-                except TimedOut:
-                    logging.warning("Telegram message timed out; skipping")
-                    return False
-                except Exception as exc:
-                    logging.warning("Telegram delivery failed (%s)", type(exc).__name__)
-                    return False
+        remaining = expires_at.timestamp() - time.time() if expires_at else None
+        if remaining is not None and remaining <= 0:
+            return False
+        try:
+            async with asyncio.timeout(remaining):
+                async with self._send_lock:
+                    while True:
+                        await self._sleep_for_send_interval()
+                        if (
+                            expires_at is not None
+                            and time.time() >= expires_at.timestamp()
+                        ):
+                            return False
+                        try:
+                            await self.bot.send_message(
+                                self.chat_id,
+                                text=self._sanitize_html(message),
+                                parse_mode=ParseMode.HTML,
+                                link_preview_options=LinkPreviewOptions(
+                                    is_disabled=True
+                                ),
+                            )
+                            self._last_send_at = time.monotonic()
+                            return True
+                        except RetryAfter as e:
+                            if not retry_on_rate_limit:
+                                logging.warning(
+                                    "Telegram rate limited; skipping one-shot alert"
+                                )
+                                return False
+                            retry_after = self._retry_after_seconds(e)
+                            sleep_seconds = retry_after + self._retry_after_pad_seconds
+                            logging.warning(
+                                "Telegram flood control active; retrying message in %.1f seconds",
+                                sleep_seconds,
+                            )
+                            await asyncio.sleep(sleep_seconds)
+                        except TimedOut:
+                            logging.warning("Telegram message timed out; skipping")
+                            return False
+                        except Exception as exc:
+                            logging.warning(
+                                "Telegram delivery failed (%s)", type(exc).__name__
+                            )
+                            return False
+        except TimeoutError:
+            logging.info("Telegram alert expired before delivery completed; skipping")
+            return False
 
     def send_once(self, message: str) -> bool:
         """Attempt an ephemeral synchronous delivery, without retries or cooldowns."""
