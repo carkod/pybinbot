@@ -1,3 +1,5 @@
+import asyncio
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -85,3 +87,63 @@ async def test_async_delivery_keeps_binquant_flood_control_retry():
         )
         assert await delivery.send("Signal") is True
     assert bot.return_value.send_message.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_one_shot_alert_does_not_retry_rate_limited_send():
+    with patch("pybinbot.shared.telegram_delivery.Bot") as bot:
+        bot.return_value.send_message = AsyncMock(side_effect=RetryAfter(60))
+        delivery = TelegramDelivery(token="test-token", chat_id="test-chat")
+        assert await delivery.send("Signal", retry_on_rate_limit=False) is False
+        bot.return_value.send_message.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_expired_alert_is_never_submitted_to_telegram():
+    with patch("pybinbot.shared.telegram_delivery.Bot") as bot:
+        bot.return_value.send_message = AsyncMock()
+        delivery = TelegramDelivery(token="test-token", chat_id="test-chat")
+        assert (
+            await delivery.send(
+                "Signal", expires_at=datetime.now(UTC) - timedelta(seconds=1)
+            )
+            is False
+        )
+        bot.return_value.send_message.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_alert_expires_while_waiting_for_another_send():
+    with patch("pybinbot.shared.telegram_delivery.Bot") as bot:
+        bot.return_value.send_message = AsyncMock()
+        delivery = TelegramDelivery(token="test-token", chat_id="test-chat")
+        async with delivery._send_lock:
+            assert (
+                await delivery.send(
+                    "Signal", expires_at=datetime.now(UTC) + timedelta(milliseconds=20)
+                )
+                is False
+            )
+        bot.return_value.send_message.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_delivery_deadline_cancels_a_stalled_request():
+    with patch("pybinbot.shared.telegram_delivery.Bot") as bot:
+        cancelled = asyncio.Event()
+
+        async def stalled_send(*args, **kwargs):
+            try:
+                await asyncio.Event().wait()
+            finally:
+                cancelled.set()
+
+        bot.return_value.send_message = AsyncMock(side_effect=stalled_send)
+        delivery = TelegramDelivery(token="test-token", chat_id="test-chat")
+        assert (
+            await delivery.send(
+                "Signal", expires_at=datetime.now(UTC) + timedelta(milliseconds=20)
+            )
+            is False
+        )
+        assert cancelled.is_set()
