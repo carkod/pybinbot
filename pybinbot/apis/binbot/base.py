@@ -29,6 +29,7 @@ from pybinbot import (
 from datetime import datetime, timezone
 from dateutil.parser import parse
 from pybinbot.models.cvd import CvdAggregateResponse, CvdSymbolResponse
+from pybinbot.models.fastest_movers import FastestMoversResponse, FastestMoversSnapshot
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,7 @@ class BinbotApi:
         self.bb_gainers_losers_series_url = (
             f"{bb_base_url}/charts/gainers-losers-series"
         )
+        self.bb_fastest_movers_url = f"{bb_base_url}/charts/fastest_movers"
         self.bb_signals_url = f"{bb_base_url}/signals"
         self.bb_grid_ladders_url = f"{bb_base_url}/grid-ladders"
         self.bb_grid_ladder_calculate_url = f"{bb_base_url}/grid-ladders/calculate"
@@ -305,6 +307,13 @@ class BinbotApi:
         if response.get("data") is None:
             return []
         return GainersLosersSeriesResponse.model_validate(response).data
+
+    async def get_fastest_movers(self, limit: int = 10) -> FastestMoversSnapshot:
+        """Return one-hour price-move rankings with three-hour and 24h context."""
+        response = await self.fetch(
+            url=self.bb_fastest_movers_url, params={"limit": limit}
+        )
+        return FastestMoversResponse.model_validate(response).data
 
     async def get_cvd_symbol(self, symbol: str, limit: int = 15) -> CvdSymbolResponse:
         """Read oldest-first one-minute contract CVD, including coverage flags.

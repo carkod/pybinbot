@@ -121,6 +121,11 @@ from pybinbot.models.signals import (
 )
 from pybinbot.models.symbol import SymbolModel
 from pybinbot.models.cvd import CvdAggregateResponse, CvdPoint, CvdSymbolResponse
+from pybinbot.models.fastest_movers import (
+    FastestMoverEntry,
+    FastestMoversResponse,
+    FastestMoversSnapshot,
+)
 from pybinbot.models.routes import (
     GainerLoserEntry,
     GainersLosersSeriesResponse,
@@ -211,6 +216,9 @@ __all__ = [
     "GainerLoserEntry",
     "GainersLosersSeriesResponse",
     "GainersLosersSnapshot",
+    "FastestMoverEntry",
+    "FastestMoversResponse",
+    "FastestMoversSnapshot",
     "MarketBreadthSeries",
     "MarketBreadthSeriesResponse",
     "CvdPoint",
